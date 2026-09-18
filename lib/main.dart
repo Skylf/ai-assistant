@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
- 
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -222,7 +222,42 @@ class App extends StatelessWidget {
       title: '家庭生活助手',
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: const Color(0xff146b84),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xff145A72),
+          brightness: Brightness.light,
+          surface: const Color(0xffFEFEFF),
+        ),
+        scaffoldBackgroundColor: const Color(0xffF5F7FA),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          color: const Color(0xffFEFEFF),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Color(0xffE7ECEF)),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xffF7F9FB),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xffE1E7EA)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xffE1E7EA)),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 13,
+          ),
+        ),
+        navigationBarTheme: const NavigationBarThemeData(
+          height: 68,
+          labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12)),
+          indicatorColor: Color(0x19145A72),
+        ),
       ),
       home: Home(s),
     ),
@@ -277,8 +312,20 @@ class Title extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(a, style: Theme.of(c).textTheme.headlineMedium),
-        if (b.isNotEmpty) Text(b),
+        Text(
+          a,
+          style: Theme.of(c).textTheme.headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        if (b.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              b,
+              style: Theme.of(c).textTheme.bodySmall
+                  ?.copyWith(color: const Color(0xff6A747D)),
+            ),
+          ),
       ],
     ),
   );
@@ -299,18 +346,72 @@ class Dash extends StatelessWidget {
           d.isBefore(DateTime.now().add(const Duration(days: 90)));
     }).length;
     return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
       children: [
-        const Title('家庭生活助手', b: '本地优先 · API Key 安全保存'),
-        card(
-          c,
-          Icons.account_balance_wallet,
-          '本月支出',
-          '¥${total.toStringAsFixed(2)}',
+        const Title('早上好', b: '家庭生活助手 · 本地数据由你掌控'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Text(
+            '本月概览',
+            style: Theme.of(c).textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
         ),
-        card(c, Icons.medication, '90 天内到期', '$alert 项', alert > 0),
-        const Padding(
-          padding: EdgeInsets.all(20),
-          child: Text('健康模块仅提供药箱管理与健康科普，不做诊断、处方或个体化用药剂量。紧急症状请直接拨打 120。'),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: DashboardCard(
+            label: '本月支出',
+            value: '¥${total.toStringAsFixed(2)}',
+            caption: '查看本月家庭开销',
+            icon: Icons.account_balance_wallet,
+            color: const Color(0xffEAF5F7),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: DashboardCard(
+            label: '家庭药箱',
+            value: '$alert 项即将到期',
+            caption: '未来 90 天',
+            icon: Icons.medication_outlined,
+            color: alert > 0
+                ? const Color(0xffFFF4E6)
+                : const Color(0xffF0F4FA),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Text(
+            '最近操作',
+            style: Theme.of(c).textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.auto_awesome_outlined),
+                  title: const Text('分析本月消费'),
+                  subtitle: const Text('让 AI 根据本地账本整理趋势'),
+                  trailing: const Icon(Icons.chevron_right),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.health_and_safety_outlined),
+                  title: const Text('检查药箱'),
+                  subtitle: const Text('查看即将到期的药品'),
+                  trailing: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -334,6 +435,55 @@ Widget card(
     ),
   ),
 );
+
+class DashboardCard extends StatelessWidget {
+  final String label, value, caption;
+  final IconData icon;
+  final Color color;
+  const DashboardCard({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.caption,
+    required this.icon,
+    required this.color,
+  });
+  @override
+  Widget build(BuildContext c) => Card(
+    color: color,
+    child: Padding(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: Theme.of(c).colorScheme.primary),
+              const Spacer(),
+              Text(
+                caption,
+                style: Theme.of(c).textTheme.bodySmall
+                    ?.copyWith(color: const Color(0xff68747C)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            label,
+            style: Theme.of(c).textTheme.bodyMedium
+                ?.copyWith(color: const Color(0xff53616A)),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: Theme.of(c).textTheme.headlineSmall
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
 class Expenses extends StatefulWidget {
   final Store s;
@@ -406,23 +556,22 @@ class _ExpensesState extends State<Expenses> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             child: Row(
               children: [
                 Expanded(
-                  child: card(
-                    c,
-                    Icons.south_west,
-                    '收入',
-                    '¥${income.toStringAsFixed(2)}',
+                  child: SummaryStat(
+                    label: '收入',
+                    value: '¥${income.toStringAsFixed(2)}',
+                    color: const Color(0xff2E7D5B),
                   ),
                 ),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: card(
-                    c,
-                    Icons.north_east,
-                    '支出',
-                    '¥${out.toStringAsFixed(2)}',
+                  child: SummaryStat(
+                    label: '支出',
+                    value: '¥${out.toStringAsFixed(2)}',
+                    color: const Color(0xffB55252),
                   ),
                 ),
               ],
@@ -453,6 +602,42 @@ class _ExpensesState extends State<Expenses> {
       ),
     );
   }
+}
+
+class SummaryStat extends StatelessWidget {
+  final String label, value;
+  final Color color;
+  const SummaryStat({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+  @override
+  Widget build(BuildContext c) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(color: color, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: Theme.of(c).textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class Meds extends StatelessWidget {
@@ -542,7 +727,7 @@ class _ChatState extends State<Chat> {
         .toList();
     return Column(
       children: [
-        const Title('AI 助手'),
+        const Title('AI 助手', b: '基于你的本地账本与药箱'),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: SegmentedButton<bool>(
@@ -571,28 +756,50 @@ class _ChatState extends State<Chat> {
             ),
           ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: rows.length,
-            itemBuilder: (_, i) {
-              final x = rows[i], user = x['role'] == 'user';
-              return Align(
-                alignment: user ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 520),
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: user
-                        ? Theme.of(c).colorScheme.primaryContainer
-                        : Theme.of(c).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(14),
+          child: rows.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.auto_awesome_outlined,
+                        size: 38,
+                        color: Theme.of(c).colorScheme.primary,
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        '今天想了解什么？',
+                        style: Theme.of(c).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 6),
+                      const Text('选择下方快捷操作，或直接开始对话。'),
+                    ],
                   ),
-                  child: Text(x['content']),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: rows.length,
+                  itemBuilder: (_, i) {
+                    final x = rows[i], user = x['role'] == 'user';
+                    return Align(
+                      alignment: user
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 520),
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: user
+                              ? Theme.of(c).colorScheme.primaryContainer
+                              : Theme.of(c).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(x['content']),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -665,6 +872,7 @@ class Settings extends StatefulWidget {
 
 class _SettingsState extends State<Settings> {
   late TextEditingController u, m, k;
+  bool apiOpen = false;
   @override
   void initState() {
     super.initState();
@@ -685,6 +893,13 @@ class _SettingsState extends State<Settings> {
   Widget build(BuildContext c) => ListView(
     children: [
       const Title('设置', b: 'API Key 使用系统安全存储保存'),
+      ListTile(
+        leading: const Icon(Icons.hub_outlined),
+        title: const Text('AI 服务'),
+        subtitle: Text(apiOpen ? '正在编辑 API 配置' : '当前模型：${widget.s.model}'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => setState(() => apiOpen = !apiOpen),
+      ),
       const Padding(
         padding: EdgeInsets.symmetric(horizontal: 20),
         child: Text('账户与 AI', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -731,54 +946,55 @@ class _SettingsState extends State<Settings> {
         onTap: () =>
             infoDialog(c, '检查更新', '当前为 0.2A 开发版；请通过 GitHub 标签获取后续固定版本。'),
       ),
-      Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            input(u, 'API Base URL'),
-            input(m, '模型名'),
-            input(k, 'API Key', secret: true),
-            FilledButton(
-              onPressed: () async {
-                await widget.s.settings(
-                  u.text.trim(),
-                  m.text.trim(),
-                  k.text.trim(),
-                );
-                if (mounted)
-                  ScaffoldMessenger.of(c)
-                      .showSnackBar(const SnackBar(content: Text('设置已保存')));
-              },
-              child: const Text('保存 AI 设置'),
-            ),
-            const SizedBox(height: 20),
-            OutlinedButton.icon(
-              onPressed: () => showDialog(
-                context: c,
-                builder: (_) => AlertDialog(
-                  title: const Text('本地数据导出'),
-                  content: SingleChildScrollView(
-                    child: SelectableText(widget.s.export()),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(c),
-                      child: const Text('关闭'),
-                    ),
-                  ],
-                ),
+      if (apiOpen)
+        Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              input(u, 'API Base URL'),
+              input(m, '模型名'),
+              input(k, 'API Key', secret: true),
+              FilledButton(
+                onPressed: () async {
+                  await widget.s.settings(
+                    u.text.trim(),
+                    m.text.trim(),
+                    k.text.trim(),
+                  );
+                  if (mounted)
+                    ScaffoldMessenger.of(c)
+                        .showSnackBar(const SnackBar(content: Text('设置已保存')));
+                },
+                child: const Text('保存 AI 设置'),
               ),
-              icon: const Icon(Icons.download),
-              label: const Text('查看 JSON 导出'),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              '默认：DeepSeek\nhttps://api.deepseek.com · deepseek-flash\n可接入兼容 OpenAI Chat Completions 的服务。',
-            ),
-          ],
+              const SizedBox(height: 20),
+              OutlinedButton.icon(
+                onPressed: () => showDialog(
+                  context: c,
+                  builder: (_) => AlertDialog(
+                    title: const Text('本地数据导出'),
+                    content: SingleChildScrollView(
+                      child: SelectableText(widget.s.export()),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(c),
+                        child: const Text('关闭'),
+                      ),
+                    ],
+                  ),
+                ),
+                icon: const Icon(Icons.download),
+                label: const Text('查看 JSON 导出'),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                '默认：DeepSeek\nhttps://api.deepseek.com · deepseek-flash\n可接入兼容 OpenAI Chat Completions 的服务。',
+              ),
+            ],
+          ),
         ),
-      ),
     ],
   );
 }
