@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-
+ 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -36,6 +36,7 @@ class Store extends ChangeNotifier {
   Future<void> expense(Map<String, dynamic> x) async {
     x['id'] ??= uuid.v4();
     x['spentAt'] ??= DateTime.now().toIso8601String();
+    x['entryType'] ??= 'expense';
     await db.put('expenses', x);
     expenses = await db.all('expenses', 'spentAt DESC');
     notifyListeners();
@@ -72,6 +73,20 @@ class Store extends ChangeNotifier {
         health &&
         ['胸痛', '呼吸困难', '昏迷', '抽搐', '严重过敏', '误服', '过量'].any(q.contains);
     if (urgent) return '这可能是紧急情况，请立即拨打 120 或前往急诊；不要等待 AI 回复，也不要自行加量或混用药物。';
+    final action = _parseAction(q, health);
+    if (action != null) {
+      if (health)
+        await med(action);
+      else
+        await expense(action);
+      final label = health ? '药品已加入药箱' : '账目已加入账本';
+      await _chat(
+        'assistant',
+        '$label：${action['name'] ?? action['title']}',
+        health,
+      );
+      return '$label，并已同步显示在对应页面。';
+    }
     await _chat('user', q, health);
     if (key.isEmpty) return '请先在“设置”中填写 API Key。数据仍只保留在本机。';
     try {
@@ -111,6 +126,34 @@ class Store extends ChangeNotifier {
     }
   }
 
+  Map<String, dynamic>? _parseAction(String input, bool health) {
+    if (health) {
+      final m = RegExp(r'^(?:添加药品|添加药瓶)\s*([^，,；;]+)').firstMatch(input.trim());
+      return m == null
+          ? null
+          : {
+              'name': m.group(1)!.trim(),
+              'ingredient': '',
+              'spec': '',
+              'stock': 1,
+              'expiry': '',
+              'storage': '',
+              'note': '由 AI 快捷录入',
+            };
+    }
+    final m = RegExp(r'^(?:添加账目|记账)\s*([^，,；;\d]+)[，,；;\s]+(\d+(?:\.\d+)?)')
+        .firstMatch(input.trim());
+    return m == null
+        ? null
+        : {
+            'title': m.group(1)!.trim(),
+            'amount': double.parse(m.group(2)!),
+            'category': 'AI 录入',
+            'note': '由 AI 快捷录入',
+            'entryType': input.contains('收入') ? 'income' : 'expense',
+          };
+  }
+
   Future<void> _chat(String role, String content, bool h) async {
     await db.put('chats', {
       'id': uuid.v4(),
@@ -139,10 +182,10 @@ class DB {
         : (await getApplicationDocumentsDirectory()).path;
     d = await openDatabase(
       join(root, 'family_life.db'),
-      version: 1,
+      version: 2,
       onCreate: (x, _) async {
         await x.execute(
-          'CREATE TABLE expenses(id TEXT PRIMARY KEY,title TEXT,category TEXT,amount REAL,spentAt TEXT,note TEXT)',
+          'CREATE TABLE expenses(id TEXT PRIMARY KEY,title TEXT,category TEXT,amount REAL,spentAt TEXT,note TEXT,entryType TEXT DEFAULT \'expense\')',
         );
         await x.execute(
           'CREATE TABLE meds(id TEXT PRIMARY KEY,name TEXT,ingredient TEXT,spec TEXT,stock INTEGER,expiry TEXT,storage TEXT,note TEXT)',
@@ -150,6 +193,12 @@ class DB {
         await x.execute(
           'CREATE TABLE chats(id TEXT PRIMARY KEY,role TEXT,content TEXT,topic TEXT,createdAt TEXT)',
         );
+      },
+      onUpgrade: (x, old, _) async {
+        if (old < 2)
+          await x.execute(
+            "ALTER TABLE expenses ADD COLUMN entryType TEXT DEFAULT 'expense'",
+          );
       },
     );
   }
@@ -286,37 +335,124 @@ Widget card(
   ),
 );
 
-class Expenses extends StatelessWidget {
+class Expenses extends StatefulWidget {
   final Store s;
   const Expenses(this.s, {super.key});
   @override
-  Widget build(BuildContext c) => Scaffold(
-    floatingActionButton: FloatingActionButton.extended(
-      onPressed: () => expenseDialog(c, s),
-      label: const Text('记一笔'),
-      icon: const Icon(Icons.add),
-    ),
-    body: ListView(
-      children: [
-        const Title('家庭账本', b: '向左滑动删除；AI 仅分析已授权的本地账目'),
-        if (s.expenses.isEmpty) const Empty('还没有账目。'),
-        ...s.expenses.map(
-          (e) => Dismissible(
-            key: ValueKey(e['id']),
-            direction: DismissDirection.endToStart,
-            background: const ColoredBox(color: Colors.red),
-            onDismissed: (_) => s.remove('expenses', e['id']),
-            child: ListTile(
-              leading: const CircleAvatar(child: Icon(Icons.payments)),
-              title: Text(e['title']),
-              subtitle: Text('${e['category']} · ${date(e['spentAt'])}'),
-              trailing: Text('¥${(e['amount'] as num).toStringAsFixed(2)}'),
+  State<Expenses> createState() => _ExpensesState();
+}
+
+class _ExpensesState extends State<Expenses> {
+  DateTime selected = DateTime.now();
+  @override
+  Widget build(BuildContext c) {
+    final s = widget.s;
+    final rows = s.expenses.where((e) {
+      final d = DateTime.tryParse(e['spentAt'] ?? '');
+      return d != null &&
+          d.year == selected.year &&
+          d.month == selected.month &&
+          d.day == selected.day;
+    }).toList();
+    final income = rows
+        .where((e) => e['entryType'] == 'income')
+        .fold<double>(0, (v, e) => v + (e['amount'] as num).toDouble());
+    final out = rows
+        .where((e) => e['entryType'] != 'income')
+        .fold<double>(0, (v, e) => v + (e['amount'] as num).toDouble());
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => expenseDialog(c, s),
+        label: const Text('记一笔'),
+        icon: const Icon(Icons.add),
+      ),
+      body: ListView(
+        children: [
+          const Title('家庭账本', b: '长按账目可修改或删除'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () => setState(
+                    () => selected = selected.subtract(const Duration(days: 1)),
+                  ),
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      final d = await showDatePicker(
+                        context: c,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2100),
+                        initialDate: selected,
+                      );
+                      if (d != null) setState(() => selected = d);
+                    },
+                    icon: const Icon(Icons.calendar_month),
+                    label: Text(
+                      DateFormat('yyyy 年 MM 月 dd 日').format(selected),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(
+                    () => selected = selected.add(const Duration(days: 1)),
+                  ),
+                  icon: const Icon(Icons.chevron_right),
+                ),
+              ],
             ),
           ),
-        ),
-      ],
-    ),
-  );
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: card(
+                    c,
+                    Icons.south_west,
+                    '收入',
+                    '¥${income.toStringAsFixed(2)}',
+                  ),
+                ),
+                Expanded(
+                  child: card(
+                    c,
+                    Icons.north_east,
+                    '支出',
+                    '¥${out.toStringAsFixed(2)}',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (rows.isEmpty) const Empty('当天还没有账目。'),
+          ...rows.map(
+            (e) => Column(
+              children: [
+                ListTile(
+                  onLongPress: () => entryMenu(c, s, e, false),
+                  leading: CircleAvatar(
+                    child: Icon(
+                      e['entryType'] == 'income' ? Icons.add : Icons.remove,
+                    ),
+                  ),
+                  title: Text(e['title']),
+                  subtitle: Text('${e['category']} · ${date(e['spentAt'])}'),
+                  trailing: Text(
+                    '${e['entryType'] == 'income' ? '+' : '-'}¥${(e['amount'] as num).toStringAsFixed(2)}',
+                  ),
+                ),
+                const Divider(height: 1),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class Meds extends StatelessWidget {
@@ -331,30 +467,34 @@ class Meds extends StatelessWidget {
     ),
     body: ListView(
       children: [
-        const Title('家庭药箱', b: '请以药盒和说明书为准'),
+        const Title('家庭药箱', b: '点击查看详情；长按可修改或删除'),
         if (s.meds.isEmpty) const Empty('还没有药品。'),
         ...s.meds.map((m) {
           final d = DateTime.tryParse(m['expiry'] ?? '');
           final bad = d != null && d.isBefore(DateTime.now());
-          return Dismissible(
-            key: ValueKey(m['id']),
-            direction: DismissDirection.endToStart,
-            background: const ColoredBox(color: Colors.red),
-            onDismissed: (_) => s.remove('meds', m['id']),
-            child: ListTile(
-              isThreeLine: true,
-              leading: CircleAvatar(
-                backgroundColor: bad ? Colors.red.shade100 : null,
-                child: const Icon(Icons.medication),
+          return Column(
+            children: [
+              ListTile(
+                onTap: () => Navigator.push(
+                  c,
+                  MaterialPageRoute(builder: (_) => MedicineDetail(s, m)),
+                ),
+                onLongPress: () => entryMenu(c, s, m, true),
+                isThreeLine: true,
+                leading: CircleAvatar(
+                  backgroundColor: bad ? Colors.red.shade100 : null,
+                  child: const Icon(Icons.medication),
+                ),
+                title: Text(m['name']),
+                subtitle: Text(
+                  '${m['ingredient'].toString().isEmpty ? '成分未填' : m['ingredient']} · 库存 ${m['stock']}\n有效期：${m['expiry'].toString().isEmpty ? '未填' : m['expiry']}',
+                ),
+                trailing: bad
+                    ? const Icon(Icons.warning_amber, color: Colors.red)
+                    : null,
               ),
-              title: Text(m['name']),
-              subtitle: Text(
-                '${m['ingredient'].toString().isEmpty ? '成分未填' : m['ingredient']} · 库存 ${m['stock']}\n有效期：${m['expiry'].toString().isEmpty ? '未填' : m['expiry']}',
-              ),
-              trailing: bad
-                  ? const Icon(Icons.warning_amber, color: Colors.red)
-                  : null,
-            ),
+              const Divider(height: 1),
+            ],
           );
         }),
       ],
@@ -455,6 +595,35 @@ class _ChatState extends State<Chat> {
           ),
         ),
         Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Wrap(
+            spacing: 8,
+            children: [
+              ActionChip(
+                label: const Text('分析我的账本'),
+                onPressed: () {
+                  setState(() => h = false);
+                  q.text = '分析我的账本';
+                  send();
+                },
+              ),
+              ActionChip(
+                label: const Text('分析我的药瓶库'),
+                onPressed: () {
+                  setState(() => h = true);
+                  q.text = '分析我的药瓶库';
+                  send();
+                },
+              ),
+            ],
+          ),
+        ),
+        if (busy)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text('正在思考…', style: TextStyle(color: Colors.grey)),
+          ),
+        Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
@@ -516,6 +685,52 @@ class _SettingsState extends State<Settings> {
   Widget build(BuildContext c) => ListView(
     children: [
       const Title('设置', b: 'API Key 使用系统安全存储保存'),
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20),
+        child: Text('账户与 AI', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
+      ListTile(
+        leading: const Icon(Icons.person_outline),
+        title: const Text('账户'),
+        subtitle: const Text('本地优先，暂未启用云端账号'),
+        onTap: () => infoDialog(c, '账户', '当前版本不要求注册账号。后续同步功能会以明确授权方式提供。'),
+      ),
+      ListTile(
+        leading: const Icon(Icons.model_training_outlined),
+        title: const Text('模型'),
+        subtitle: const Text('管理 API 地址、模型与密钥'),
+        onTap: () => infoDialog(
+          c,
+          '模型',
+          '在下方填写兼容 OpenAI Chat Completions 的服务配置；默认模板为 DeepSeek。',
+        ),
+      ),
+      ListTile(
+        leading: const Icon(Icons.add_circle_outline),
+        title: const Text('新增模型'),
+        subtitle: const Text('通过 Base URL 和模型名添加'),
+        onTap: () => infoDialog(c, '新增模型', '直接修改下方 API Base URL 与模型名，然后保存即可。'),
+      ),
+      ListTile(
+        leading: const Icon(Icons.memory_outlined),
+        title: const Text('记忆'),
+        subtitle: const Text('健康与账本数据默认仅用于当前对话'),
+        onTap: () => infoDialog(c, '记忆', '当前版本默认不保存为跨会话全局记忆；后续会为每个对话提供独立开关。'),
+      ),
+      ListTile(
+        leading: const Icon(Icons.notes_outlined),
+        title: const Text('我的提示词'),
+        subtitle: const Text('预留个性化提示词入口'),
+        onTap: () =>
+            infoDialog(c, '我的提示词', '0.2A 已预留入口。个性化提示词将在后续版本加入安全审查与作用域选择。'),
+      ),
+      ListTile(
+        leading: const Icon(Icons.system_update_outlined),
+        title: const Text('检查更新'),
+        subtitle: const Text('当前版本 0.2A 开发版'),
+        onTap: () =>
+            infoDialog(c, '检查更新', '当前为 0.2A 开发版；请通过 GitHub 标签获取后续固定版本。'),
+      ),
       Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -580,43 +795,92 @@ Widget input(TextEditingController c, String l, {bool secret = false}) =>
         ),
       ),
     );
+void infoDialog(BuildContext c, String title, String content) => showDialog(
+  context: c,
+  builder: (_) => AlertDialog(
+    title: Text(title),
+    content: Text(content),
+    actions: [
+      TextButton(onPressed: () => Navigator.pop(c), child: const Text('知道了')),
+    ],
+  ),
+);
 Future<void> expenseDialog(BuildContext c, Store s) async {
   final a = TextEditingController(),
       b = TextEditingController(),
       d = TextEditingController(text: '日常'),
       n = TextEditingController();
+  var income = false;
+  var when = DateTime.now();
   await showDialog(
     context: c,
-    builder: (x) => AlertDialog(
-      title: const Text('新增账目'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            input(a, '名称'),
-            input(b, '金额'),
-            input(d, '分类'),
-            input(n, '备注（可选）'),
-          ],
+    builder: (x) => StatefulBuilder(
+      builder: (x, setLocal) => AlertDialog(
+        title: const Text('新增账目'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(value: false, label: Text('支出')),
+                  ButtonSegment(value: true, label: Text('收入')),
+                ],
+                selected: {income},
+                onSelectionChanged: (v) => setLocal(() => income = v.first),
+              ),
+              input(a, '名称'),
+              TextField(
+                controller: b,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: '金额',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              input(d, '分类'),
+              TextButton.icon(
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: x,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2100),
+                    initialDate: when,
+                  );
+                  if (picked != null) setLocal(() => when = picked);
+                },
+                icon: const Icon(Icons.calendar_month),
+                label: Text('记录日期：${date(when.toIso8601String())}'),
+              ),
+              input(n, '备注（可选）'),
+            ],
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(x),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final v = double.tryParse(b.text);
+              if (a.text.trim().isEmpty || v == null) return;
+              await s.expense({
+                'title': a.text.trim(),
+                'amount': v,
+                'category': d.text.trim(),
+                'note': n.text.trim(),
+                'entryType': income ? 'income' : 'expense',
+                'spentAt': when.toIso8601String(),
+              });
+              if (x.mounted) Navigator.pop(x);
+            },
+            child: const Text('保存'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(x), child: const Text('取消')),
-        FilledButton(
-          onPressed: () async {
-            final v = double.tryParse(b.text);
-            if (a.text.trim().isEmpty || v == null) return;
-            await s.expense({
-              'title': a.text.trim(),
-              'amount': v,
-              'category': d.text.trim(),
-              'note': n.text.trim(),
-            });
-            if (x.mounted) Navigator.pop(x);
-          },
-          child: const Text('保存'),
-        ),
-      ],
     ),
   );
 }
@@ -669,6 +933,99 @@ Future<void> medDialog(BuildContext c, Store s) async {
     ),
   );
 }
+
+Future<void> entryMenu(
+  BuildContext c,
+  Store s,
+  Map<String, dynamic> row,
+  bool medicine,
+) async {
+  final result = await showModalBottomSheet<String>(
+    context: c,
+    builder: (_) => SafeArea(
+      child: Wrap(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.edit),
+            title: const Text('修改'),
+            onTap: () => Navigator.pop(c, 'edit'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline, color: Colors.red),
+            title: const Text('删除'),
+            onTap: () => Navigator.pop(c, 'delete'),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (result == 'delete')
+    await s.remove(medicine ? 'meds' : 'expenses', row['id']);
+  if (result == 'edit') {
+    if (medicine)
+      await medDialog(c, s);
+    else
+      await expenseDialog(c, s);
+  }
+}
+
+class MedicineDetail extends StatelessWidget {
+  final Store s;
+  final Map<String, dynamic> m;
+  const MedicineDetail(this.s, this.m, {super.key});
+  @override
+  Widget build(BuildContext c) => Scaffold(
+    appBar: AppBar(title: Text(m['name'])),
+    body: ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        detail('通用名 / 成分', m['ingredient']),
+        detail('规格', m['spec']),
+        detail('库存', m['stock']),
+        detail('有效期', m['expiry']),
+        detail('储存条件', m['storage']),
+        detail('说明书要点 / 备注', m['note']),
+        const SizedBox(height: 20),
+        FilledButton.icon(
+          onPressed: () async {
+            final r = await s.ask(
+              '请仅根据我的药箱资料介绍 ${m['name']} 的信息、储存和需要咨询药师的情况。',
+              true,
+            );
+            if (c.mounted)
+              showDialog(
+                context: c,
+                builder: (_) => AlertDialog(
+                  title: const Text('健康科普'),
+                  content: SingleChildScrollView(child: Text(r)),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(c),
+                      child: const Text('关闭'),
+                    ),
+                  ],
+                ),
+              );
+          },
+          icon: const Icon(Icons.auto_awesome),
+          label: const Text('询问 AI'),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget detail(String k, dynamic v) => Padding(
+  padding: const EdgeInsets.only(bottom: 16),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(k, style: const TextStyle(fontWeight: FontWeight.bold)),
+      const SizedBox(height: 4),
+      Text(v?.toString().isEmpty ?? true ? '未填写' : v.toString()),
+    ],
+  ),
+);
 
 String date(dynamic x) {
   final d = DateTime.tryParse(x?.toString() ?? '');
