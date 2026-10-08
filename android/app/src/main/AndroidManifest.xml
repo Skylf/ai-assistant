@@ -1,6 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- AI 功能需要访问用户配置的模型服务。缺少这条权限时 release 包会在
+         所有网络请求上静默失败（debug/profile 的 manifest 各自声明了它，
+         所以只在 debug 下测试是发现不了的）。 -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="family_life_assistant"
+        android:label="家庭生活助手"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

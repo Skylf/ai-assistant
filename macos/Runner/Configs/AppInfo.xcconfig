@@ -5,7 +5,8 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = family_life_assistant
+// 保持非 ASCII 名称，桌面与 Dock 才会显示中文名而不是包名。
+PRODUCT_NAME = 家庭生活助手
 
 // The application's bundle identifier
 PRODUCT_BUNDLE_IDENTIFIER = com.familyassistant.familyLifeAssistant

@@ -33,6 +33,13 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# 需求文档与设计示例图：只在本机留存，不纳入版本库
+/doc/
+
+# 测试产物：失败对比图与预览出图
+/test/failures/
+/test/tools/preview/
+
 # Symbolication related
 app.*.symbols
 

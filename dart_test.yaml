@@ -1,0 +1,13 @@
+# 测试配置。
+#
+# 这里只「声明」preview 标签的含义，不加 skip 规则 —— 因为 test 包的
+# `skip` 会无视 `--tags preview`，让显式指定也跑不起来。
+# 未指定 --tags 时，带标签的用例默认就不会被执行。
+#
+# preview 标签用于「出图工具」而不是断言测试（test/tools/render_pages.dart）：
+# 它把主要页面渲染成 PNG 供人工与设计稿比对，图片随 UI 调整而变，
+# 不适合放进默认的 `flutter test`。需要重新出图时显式运行：
+#
+#   flutter test test/tools/render_pages.dart --tags preview --update-goldens
+tags:
+  preview:

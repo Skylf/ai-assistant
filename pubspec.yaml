@@ -16,7 +16,26 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.2.0-b+1
+#
+# 版本号规则（改动前先读这段）：**开发版用字母，正式版用数字。**
+#
+#   0.4A  0.4B  0.4C   ← 0.4 阶段的开发版，小更新依次用 A/B/C
+#   0.4                ← 0.4 阶段的正式版（正式发布才去掉字母）
+#   0.5A               ← 进入 0.5 阶段
+#
+# App 内显示的版本串是**开发代号**（`0.4A`，见 lib/pages/settings.dart 的
+# appVersion）；Android 的 versionName 不接受字母，所以 pubspec 里用
+# `0.4.0` 表示同一个东西，两者的 <major>.<minor> 必须一致（由测试断言）。
+#
+#   version  = <major>.<minor>.<patch>+<versionCode>
+#   versionName（系统「应用信息」里显示的）就是前面的 <major>.<minor>.<patch>；
+#   versionCode **每次发版都要 +1 且严格递增**，否则 Android 拒绝覆盖安装
+#   （报「应用未安装」）。它与开发代号没有对应关系，只是一个递增的整数。
+#
+# 历史上这里从 0.2C 之后就没再 bump，versionCode 一直停在 2：那意味着任何
+# 后续 APK 用户都装不上，而更新页又承诺「覆盖安装后账本、药箱与对话记录都会
+# 保留」。test/version_consistency_test.dart 现在会拦住这种漂移。
+version: 0.4.0+12
 
 environment:
   sdk: ^3.13.3
