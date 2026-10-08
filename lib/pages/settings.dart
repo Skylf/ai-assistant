@@ -34,7 +34,7 @@ import 'update.dart';
 /// 加一，否则 Android 拒绝覆盖安装）、[Changelog.entries] 的第一条、
 /// 以及 `test/update_test.dart` 里的清单样例。`test/version_consistency_test.dart`
 /// 会拦截漏改。
-const appVersion = '0.4I';
+const appVersion = '0.5.1';
 
 /// 设置页：多级信息架构（0.2B 评审要求）。
 ///

@@ -1,16 +1,16 @@
 # 家庭生活助手
 
-0.4I 开发版。基于 Flutter 的本地优先家庭账本、家庭药箱与密码生成器，预留 Android、iOS 和 macOS 平台。
+0.5.1 发行版。基于 Flutter 的本地优先家庭账本、家庭药箱与密码生成器，预留 Android、iOS 和 macOS 平台。
 
-> 版本号规则：**开发版用字母，正式版用数字**（`0.4A` → … → `0.4G` → `0.4H` → `0.4I`，
+> 版本号规则：**开发版用字母，正式版用数字**（`0.4A` → … → `0.4H` → `0.4I` → **`0.5.1`**，
 > 正式发布为 `0.4`，进入下一阶段为 `0.5A`）。每次更新要做三件事：
 > 递增 `lib/pages/settings.dart` 的 `appVersion`、同步 `pubspec.yaml` 的
 > `version:`（**并把 `+` 后面的 `versionCode` 加一**，否则 Android 拒绝覆盖安装）、
 > 在 `Changelog.entries` 最前面加一条。
 >
-> Android 的 `versionName` 不接受字母，所以 pubspec 里写 `version: 0.4.0+13`，
-> 与 App 内的 `0.4I` 是同一个版本（`<major>.<minor>` 必须一致）。
-> 系统「应用信息」显示 `0.4.0`、App 内显示 `0.4I` 是**预期行为**。
+> 本版是**发行版**，所以 pubspec 里写 `version: 0.5.1+14`，
+> 与 App 内的 `0.5.1` **完全相同**（发行版两处都是三段式数字，不再有开发代号）。
+> 系统「应用信息」与 App 内都显示 `0.5.1`。
 > `test/version_consistency_test.dart` 会拦截漂移；历史上 versionCode 曾停在 2，
 > 导致后续包装不上。
 
