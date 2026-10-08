@@ -362,15 +362,27 @@ void main() {
       await pumpApp(tester, store);
       await openChat(tester, '账本分析', primeWith: '看看这个月的支出');
 
-      expect(find.text('仅本对话'), findsOneWidget);
+      // 胶囊应当显示**当前对话**的记忆档位。这里刻意不去断言「默认是哪个」
+      // —— 默认值在 2026-10-08 从「仅当前对话」改成了「全局记忆」，
+      // 原来这条测试写死了初始值，改默认值时就红了，而功能其实完全正常。
+      // 要测的是「胶囊跟着设置走」，所以从当前档位出发、换成另一个档位。
+      final initial = store.activeConversation!.memory;
+      expect(find.text(initial.shortLabel), findsOneWidget);
+      expect(find.text('全局记忆'), initial == MemoryScope.global
+          ? findsOneWidget
+          : findsNothing);
 
+      final target = initial == MemoryScope.global
+          ? MemoryScope.local
+          : MemoryScope.global;
       await store.updateConversation(
         store.activeConversationId,
-        memory: MemoryScope.global,
+        memory: target,
       );
       await tester.pumpAndSettle();
-      expect(find.text('全局记忆'), findsOneWidget);
-      expect(find.text('仅本对话'), findsNothing);
+
+      expect(find.text(target.shortLabel), findsOneWidget);
+      expect(find.text(initial.shortLabel), findsNothing);
     });
 
     testWidgets('用户气泡与助手气泡的左右布局生效', (tester) async {

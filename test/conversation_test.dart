@@ -200,9 +200,31 @@ void main() {
   });
 
   group('记忆作用域', () {
-    test('默认是「仅当前对话」', () async {
+    test('【关键】新建对话的默认记忆是「存入全局记忆」', () async {
+      // 2026-10-08 用户要求：AI 对话记忆默认为全局记忆（原为「仅当前对话」）。
+      // 断言写成 defaultScope 而不是字面量 global，这样「默认值是什么」只有
+      // 一处定义；但**同时**断言它确实是 global —— 否则改了常量这条测试
+      // 会跟着一起变，等于没测。两行缺一不可。
+      expect(MemoryScope.defaultScope, MemoryScope.global);
       final store = await openStore();
-      expect(store.activeConversation!.memory, MemoryScope.local);
+      expect(store.activeConversation!.memory, MemoryScope.global);
+    });
+
+    test('显式指定其他记忆档位时不会被默认值覆盖', () async {
+      // 默认值只作用于「新建对话」这一次调用，不能把调用方明确传的值吃掉。
+      final store = await openStore();
+      final local = await store.createConversation(
+        title: '私密对话',
+        memory: MemoryScope.local,
+      );
+      expect(local.memory, MemoryScope.local);
+      final off = await store.createConversation(
+        title: '临时问问',
+        memory: MemoryScope.off,
+      );
+      expect(off.memory, MemoryScope.off);
+      // 新建之后立刻读回，确认落库的就是传进去的那个档位
+      expect(store.activeConversation!.memory, MemoryScope.off);
     });
 
     test('三档记忆都有展示文案，不会出现空标签', () {
@@ -236,7 +258,10 @@ void main() {
       expect(Topic.fromCode(null), Topic.finance);
       expect(MemoryScope.fromCode('global'), MemoryScope.global);
       expect(MemoryScope.fromCode('off'), MemoryScope.off);
-      expect(MemoryScope.fromCode('nope'), MemoryScope.local);
+      expect(MemoryScope.fromCode('local'), MemoryScope.local);
+      // 无法识别的记忆码回落到当前默认档位（与新建对话一致，不留第二种答案）
+      expect(MemoryScope.fromCode('nope'), MemoryScope.defaultScope);
+      expect(MemoryScope.fromCode(null), MemoryScope.defaultScope);
     });
   });
 
@@ -332,16 +357,20 @@ void main() {
 
     test('清空对话后自动补一个空对话，且记忆设置被重置', () async {
       final store = await openStore();
+      // 先显式改成与默认**不同**的档位，否则「被重置」这件事测不出来
+      // （默认值改成 global 之后，如果这里写死 global，就恒真了）。
       await store.updateConversation(
         store.activeConversationId,
-        memory: MemoryScope.global,
+        memory: MemoryScope.off,
       );
+      expect(store.activeConversation!.memory, MemoryScope.off);
       await store.addMessage('user', '你好');
 
       await store.clearData(tables: [T.conversations, T.chats]);
       expect(store.messages, isEmpty);
       expect(store.conversations.length, 1);
-      expect(store.activeConversation!.memory, MemoryScope.local);
+      // 补出来的新对话应当回到**默认**档位
+      expect(store.activeConversation!.memory, MemoryScope.defaultScope);
     });
 
     test('导出的 JSON 含版本号且不含 API Key', () async {

@@ -334,14 +334,32 @@ void main() {
     // 0.4C：侧滑菜单里的「置顶区 / 普通区」必须有明确分界线 —— 这是纯排版要求，
     // 只能出图看。先造出「一条置顶 + 两条普通」，两区都非空才会画分界线。
     // ⚠️ 必须在**退出介绍页之前**做：右上角「历史对话」按钮只在介绍页上。
+    //
+    // ⚠️ 这里必须**逐条创建 + 每次 pumpAndSettle**，不能在 `Future.wait` 里并发建。
+    //
+    // 原因（2026-10-08 实测踩到）：`createConversation` 内部会
+    // `await db.put` → `_reloadConversations` → `selectConversation`，
+    // 并且**每次都会把新对话设为当前对话**。并发建三条时，「哪一条是当前对话」
+    // 取决于它们各自的完成顺序 —— 而侧滑菜单会把当前对话画成高亮块。
+    // 于是出图时高亮块落在哪一条上是不确定的：
+    // 我连跑三次都拿到同一张图（14.20% 与 golden 不符），
+    // 而 golden 是在另一次运行里生成的 —— 图的内容本身就不稳定。
+    // 串行 + 每次 settle，把「当前对话」钉死在最后建的那条上。
+    //
+    // 顺带：`toggleConversationPin` 也要在创建之后立刻做，否则
+    // 「置顶区」里可能出现还没打上 pin 的条目。
     final pinned = await store.createConversation(
       title: '每月固定开销',
       topic: Topic.finance,
     );
+    await tester.pumpAndSettle();
     await store.toggleConversationPin(pinned.id);
+    await tester.pumpAndSettle();
     await store.createConversation(title: '春节开销复盘', topic: Topic.finance);
+    await tester.pumpAndSettle();
     await store.createConversation(title: '外卖花了多少', topic: Topic.finance);
     await tester.pumpAndSettle();
+
     await tester.tap(find.byTooltip('历史对话'));
     await tester.pumpAndSettle();
     await shoot('07b-history-pinned');

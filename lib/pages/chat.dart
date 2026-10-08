@@ -381,7 +381,7 @@ class ChatPageState extends State<ChatPage> {
   );
 
   Widget _memoryChip(Conversation? conversation) {
-    final scope = conversation?.memory ?? MemoryScope.local;
+    final scope = conversation?.memory ?? MemoryScope.defaultScope;
     return Tooltip(
       message: '当前对话记忆：${scope.label}',
       child: ActionChip(

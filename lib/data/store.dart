@@ -266,7 +266,7 @@ class Store extends ChangeNotifier {
   Future<Conversation> createConversation({
     String title = '',
     Topic topic = Topic.finance,
-    MemoryScope memory = MemoryScope.local,
+    MemoryScope memory = MemoryScope.defaultScope,
   }) async {
     final now = DateTime.now();
     final conversation = Conversation(
@@ -1047,7 +1047,7 @@ class Store extends ChangeNotifier {
     void Function(SearchPhase phase)? onPhase,
   }) async {
     final topic = activeConversation?.topic ?? Topic.finance;
-    final memory = activeConversation?.memory ?? MemoryScope.local;
+    final memory = activeConversation?.memory ?? MemoryScope.defaultScope;
 
     // 必须在**用户消息已经落库之后**取历史。
     //

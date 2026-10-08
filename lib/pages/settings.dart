@@ -39,7 +39,7 @@ import 'widget_settings.dart';
 /// ⚠️ 「当前版本」那一行显示的是 `$appVersion 发行版`。**发行版不能再写「开发版」**
 /// —— 0.5.1 之后这个字串漏改过一次（版本号升到 `0.5.1` 了，标签还写着「开发版」），
 /// 界面上等于对用户说错话。`test/version_consistency_test.dart` 现在会拦它。
-const appVersion = '0.5.2';
+const appVersion = '0.5.3';
 
 /// 设置页：多级信息架构（0.2B 评审要求）。
 ///

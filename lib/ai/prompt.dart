@@ -85,7 +85,7 @@ class PromptBuilder {
     required DateTime now,
     String customPrompt = '',
     List<String> globalMemory = const [],
-    MemoryScope memoryScope = MemoryScope.local,
+    MemoryScope memoryScope = MemoryScope.defaultScope,
     bool allowActions = true,
   }) {
     final base = topic == Topic.health

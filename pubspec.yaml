@@ -35,7 +35,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # 历史上这里从 0.2C 之后就没再 bump，versionCode 一直停在 2：那意味着任何
 # 后续 APK 用户都装不上，而更新页又承诺「覆盖安装后账本、药箱与对话记录都会
 # 保留」。test/version_consistency_test.dart 现在会拦住这种漂移。
-version: 0.5.2+15
+version: 0.5.3+16
 
 environment:
   sdk: ^3.13.3
