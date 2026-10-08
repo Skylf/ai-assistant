@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  桌面组件用到的文案。
+
+  ⚠️ 单独一份 strings.xml（不并进 values/strings.xml）只是习惯问题，
+  Android 会把 values 下所有文件的字符串合并，所以放哪都行；
+  集中在这里便于「组件相关文案一起改」。
+-->
+<resources>
+    <string name="widget_app_name">家庭助手</string>
+
+    <!-- 四个组件的名字（出现在「添加组件」列表里） -->
+    <string name="widget_expense_label">记账</string>
+    <string name="widget_expense_ai_label">AI 记账</string>
+    <string name="widget_med_label">记药</string>
+    <string name="widget_med_ai_label">AI 记药</string>
+
+    <!-- 组件描述（添加列表里的副标题） -->
+    <string name="widget_expense_desc">点一下，在桌面直接记一笔收支</string>
+    <string name="widget_expense_ai_desc">说一句「买菜 20」，让 AI 帮你记</string>
+    <string name="widget_med_desc">点一下，在桌面直接记一盒药</string>
+    <string name="widget_med_ai_desc">说一句「布洛芬两盒」，让 AI 帮你记</string>
+
+    <!-- 组件内标题 -->
+    <string name="widget_expense_title">记账</string>
+    <string name="widget_expense_ai_title">AI 记账</string>
+    <string name="widget_med_title">记药</string>
+    <string name="widget_med_ai_title">AI 记药</string>
+
+    <!-- 汇总区占位与后缀 -->
+    <string name="widget_summary_placeholder">打开 App 一次即可显示汇总</string>
+    <string name="widget_action_expense">记一笔</string>
+    <string name="widget_action_med">记一盒</string>
+    <string name="widget_action_ai">说一句话</string>
+
+    <string name="widget_expense_summary_fmt">今日支出 ¥%1$s　共 %2$d 笔</string>
+    <string name="widget_med_summary_fmt">药箱 %1$d 种　需关注 %2$d 种</string>
+
+    <!-- ===== 桌面浮层（QuickEntryActivity）===== -->
+    <string name="quick_close">关闭</string>
+    <string name="quick_cancel">取消</string>
+    <string name="quick_save">保存</string>
+    <string name="quick_yuan">¥</string>
+
+    <string name="quick_expense_title">记一笔</string>
+    <string name="quick_expense_hint">记完自动进账本，和 App 里记的一样</string>
+    <string name="quick_expense_type_expense">支出</string>
+    <string name="quick_expense_type_income">收入</string>
+    <string name="quick_expense_amount">金额</string>
+    <string name="quick_amount_hint">0.00</string>
+    <string name="quick_expense_category">分类</string>
+    <string name="quick_expense_name">名称（可留空）</string>
+    <string name="quick_expense_name_hint">留空则用分类名</string>
+    <string name="quick_expense_date">今天</string>
+    <string name="quick_expense_note_hint">备注（可留空）</string>
+
+    <string name="quick_med_title">记一盒</string>
+    <string name="quick_med_hint">记完自动进药箱，详情可回 App 补充</string>
+    <string name="quick_med_name">药品名称</string>
+    <string name="quick_med_name_hint">如：布洛芬缓释胶囊</string>
+    <string name="quick_med_spec">规格（可留空）</string>
+    <string name="quick_med_spec_hint">如：0.3g×20 粒</string>
+    <string name="quick_med_stock">数量</string>
+    <string name="quick_med_unit">单位</string>
+    <string name="quick_med_expiry">有效期（可留空）</string>
+    <string name="quick_med_expiry_hint">如：2027-06 或 2027-06-30</string>
+    <string name="quick_med_storage">储存条件（可留空）</string>
+    <string name="quick_med_storage_hint">如：阴凉干燥处</string>
+
+    <string name="quick_saved_expense">已记入账本</string>
+    <string name="quick_saved_med">已加入药箱</string>
+    <string name="quick_err_amount">请填写有效的金额</string>
+    <string name="quick_err_amount_zero">金额需要大于 0</string>
+    <string name="quick_err_name">请填写药品名称</string>
+    <string name="quick_err_stock">数量请填写 0 或正整数</string>
+</resources>

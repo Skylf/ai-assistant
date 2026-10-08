@@ -248,17 +248,35 @@ void main() {
       await tester.pumpAndSettle();
 
       // 设置 → 检查更新。
-      // 「检查更新」在设置页靠下，首屏看不到，必须先滚到它 ——
-      // 直接用 find.text 会抛 `Bad state: No element`（.last 对空结果集报错）。
+      //
+      // ⚠️ 这里原来是一个「拖动到 finder 出现为止」的循环（`drag(0,-160)` × 30），
+      // 它有个隐藏的缺陷：**只在 finder 出现时停手，不保证真的可见**。
+      // 设置页内容一变长，「检查更新」就会被停在屏幕边缘、只露出一半 ——
+      // finder 已经能匹配到它，于是循环退出，而 `tap` 打在卡片外，
+      // 页面根本没跳转，最后报的却是「最新一版没渲染出来」（误导的方向）。
+      // 0.5.2 加了一行「桌面组件」入口就正好触发了这个现象。
+      //
+      // 也不能只写 `ensureVisible`：设置页是 `ListView`（懒构建），
+      // 首屏之外的「检查更新」**根本不在 widget 树里**，finder 会返回 0 个，
+      // `ensureVisible` 直接抛 StateError。必须先 `scrollUntilVisible` 把它滚出来。
+      //
+      // 两段合起来才是对的 —— 与 `feature_ui_test.dart` 里 `scrollTo` 的写法一致：
+      // 不在树里就先滚出来，在树里但没露全就用 ensureVisible 收尾。
       await tester.tap(find.text('设置').last);
       await tester.pumpAndSettle();
 
       final target = find.text('检查更新');
-      for (var i = 0; i < 30 && target.evaluate().isEmpty; i++) {
-        await tester.drag(find.byType(ListView).first, const Offset(0, -160));
-        await tester.pumpAndSettle();
-      }
+      await tester.scrollUntilVisible(
+        target,
+        160,
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 40,
+      );
+      await tester.pumpAndSettle();
       expect(target, findsWidgets, reason: '设置页里应当有「检查更新」入口');
+      // 滚出来了但可能只露一半，tap 会打在卡片外 —— 收尾对齐到完全可见。
+      await tester.ensureVisible(target.first);
+      await tester.pumpAndSettle();
       await tester.tap(target.first);
       await tester.pumpAndSettle();
 

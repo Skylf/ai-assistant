@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「widget_expense_label」组件的系统声明。
+
+  · updatePeriodMillis = 1800000（30 分钟）是系统允许的最小值附近，
+    用来兜底刷新汇总数字。真正需要即时刷新时由 Flutter 写汇总文件后
+    主动触发更新（见 WidgetSync），不依赖这个周期。
+  · previewImage 用启动图标位图：Android 8.0 起系统会自动生成预览，
+    这里只是老版本的兜底，所以不追求好看。
+  · resizeMode="horizontal|vertical" 允许用户拉伸成 2x2 / 4x2，
+    布局用的是 weight，拉伸后不会错位。
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_expense_desc"
+    android:initialLayout="@layout/widget_quick_entry"
+    android:minHeight="110dp"
+    android:minWidth="110dp"
+    android:previewImage="@drawable/ic_widget_app"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />

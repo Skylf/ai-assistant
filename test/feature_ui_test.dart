@@ -438,8 +438,16 @@ void main() {
       expect(find.text('密码生成器'), findsOneWidget);
       await scrollTo(tester, find.text('关于'));
       expect(find.text('关于'), findsOneWidget);
-      await scrollTo(tester, find.text('$appVersion 开发版'));
-      expect(find.text('$appVersion 开发版'), findsOneWidget);
+      // 「当前版本」那一行的文案随 appVersion 的形态变化：
+      // 发行版写「发行版」、带字母的开发版写「开发版」（0.5.1 起已是发行版）。
+      // 这里按同一个判据取词，不要写死 —— 写死过一次，版本升级后这条就红了，
+      // 而界面其实是对的。判据本身由 `version_consistency_test.dart` 钉住。
+      final isRelease = !RegExp(
+        r'[A-Za-z]',
+      ).hasMatch(appVersion.replaceAll(RegExp(r'^\d+\.\d+'), ''));
+      final versionLabel = '$appVersion ${isRelease ? '发行版' : '开发版'}';
+      await scrollTo(tester, find.text(versionLabel));
+      expect(find.text(versionLabel), findsOneWidget);
     });
 
     testWidgets('AI 服务二级页可以配置并返回', (tester) async {

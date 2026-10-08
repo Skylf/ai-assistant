@@ -138,4 +138,21 @@ enum ChatMode {
 
   static ChatMode of(Topic topic) =>
       topic == Topic.health ? ChatMode.health : ChatMode.finance;
+
+  /// 桌面组件类型 → 该用哪个模块（0.5.2）。
+  ///
+  /// ## 为什么这个映射必须存在，而且不能猜
+  ///
+  /// 用户在桌面上点的是「AI 记账」还是「AI 记药」，**这件事本身就是模块归属的
+  /// 唯一依据**。它在 0.4A 已被证明是必须的：真机上出现过在账本里说
+  /// 「加到账本里去」，模型却给出 `med_add`，结果往药箱写了一条药。
+  /// 所以模块由用户点的那个组件决定，**绝不交给模型或关键词去推断** ——
+  /// 这里按 `kind` 前缀直接映射，`expense*` → 账本，其余 → 健康。
+  ///
+  /// [kind] 为空（不是从组件进来）时回落到账本模式，与本文件其它兜底一致。
+  static ChatMode fromWidgetKind(String? kind) {
+    final value = kind?.trim() ?? '';
+    if (value.isEmpty) return ChatMode.finance;
+    return value.startsWith('expense') ? ChatMode.finance : ChatMode.health;
+  }
 }

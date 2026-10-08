@@ -129,5 +129,56 @@ void main() {
         );
       }
     });
+
+    test('【关键】发行版的「当前版本」那一行不能写着「开发版」', () {
+      // 这一条是**真发生过**的：版本号升到 0.5.1（发行版）之后，
+      // 设置页「当前版本」那行还写着「0.5.1 开发版」——界面上等于对用户说错话。
+      // 数字版却自称开发版，用户报障时会以为自己装的是测试包。
+      //
+      // 反过来也不行：开发版（带字母）不该自称发行版。
+      //
+      // ⚠️ 这里**必须只看代码行，不能搜整个文件**。第一版我写的是
+      // `source.contains("'\$appVersion 发行版'")`，结果**反向验证不通过**：
+      // 我在 appVersion 上方写的说明注释里正好也有 `$appVersion 发行版` 这段文字，
+      // 于是无论代码里写的是什么，`contains` 都能命中注释 → 断言恒真 → 白写。
+      // （这正是 G8 要防的「测试从不失败」。是反向验证把它抓出来的。）
+      //
+      // 现在的做法：只取 `trailingText:` 那一行（注释行以 `///` 开头，不会命中），
+      // 再看它写的是哪个词。找不到这行就直接失败 —— 免得改版式后断言悄悄失效。
+      final codeLine = File('lib/pages/settings.dart')
+          .readAsLinesSync()
+          .where((l) => l.trimLeft().startsWith('trailingText:'))
+          .firstWhere(
+            (l) => l.contains('appVersion'),
+            orElse: () => '',
+          );
+
+      expect(
+        codeLine,
+        isNotEmpty,
+        reason: '设置页里应当有一行 `trailingText: \'\$appVersion …\'`（已改版式？）',
+      );
+
+      final isRelease = !RegExp(r'[A-Za-z]').hasMatch(
+        appVersion.replaceAll(RegExp(r'^\d+\.\d+'), ''),
+      );
+
+      if (isRelease) {
+        expect(
+          codeLine,
+          contains('发行版'),
+          reason: 'appVersion 是发行版（$appVersion），不该在界面上自称「开发版」。'
+              '当前这一行是：${codeLine.trim()}',
+        );
+        expect(codeLine, isNot(contains('开发版')));
+      } else {
+        expect(
+          codeLine,
+          contains('开发版'),
+          reason: 'appVersion 是开发版（$appVersion），应显示「开发版」。'
+              '当前这一行是：${codeLine.trim()}',
+        );
+      }
+    });
   });
 }

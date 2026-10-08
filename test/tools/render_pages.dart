@@ -8,6 +8,7 @@ import 'package:family_life_assistant/main.dart';
 import 'package:family_life_assistant/pages/api_config.dart';
 import 'package:family_life_assistant/pages/password_tool.dart';
 import 'package:family_life_assistant/pages/settings.dart';
+import 'package:family_life_assistant/pages/widget_settings.dart';
 import 'package:family_life_assistant/security/password_engine.dart';
 import 'package:family_life_assistant/theme.dart';
 import 'package:flutter/material.dart';
@@ -395,11 +396,37 @@ void main() {
     await tester.pumpAndSettle();
     await shoot('11-settings-tools');
 
+    // 0.5.2：桌面组件设置页单独出图。
+    //
+    // 这一页在窄屏上的风险是实打实的：四种组件各占一张「图标 + 标题 + 两行说明 +
+    // 一个按钮」的卡片，是所有页面里纵向内容最多的之一；而且每张卡里的
+    // 「添加到桌面」按钮是**必须能点到**的（点不到就等于功能不存在）。
+    // 出图能看出按钮有没有被挤掉、卡片有没有溢出。
+    //
+    // 用固定内容直接构造页面，不经过真实点击 —— 与密码生成器那一段同理：
+    // 真实路径要调系统的 requestPinAppWidget，在测试环境里没有实现。
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(),
+        home: WidgetSettingsPage(store: store),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await shoot('13-widget-settings');
+    dumpText('13-widget-settings');
+
+    // 按钮数与「添加到桌面」文案数必须都等于 4（四种组件各一个）。
+    // 少一个就说明有卡片被挤出可视区或渲染失败 —— 出图看不出这种「缺一个」。
+    debugPrint(
+      '组件设置页「添加到桌面」按钮数：'
+      '${find.text('添加到桌面').evaluate().length}（应为 4）',
+    );
+
     // 记录实际渲染出来的版本号，串版本时一眼能看出来
-    debugPrint('设置页版本号文案：$appVersion 开发版');
+    debugPrint('设置页版本号文案：$appVersion 发行版');
     debugPrint(
       '设置页是否渲染出该文案：'
-      '${find.text('$appVersion 开发版').evaluate().isNotEmpty}',
+      '${find.text('$appVersion 发行版').evaluate().isNotEmpty}',
     );
     debugPrint(
       '密码生成器入口数量：${find.text('密码生成器').evaluate().length}',

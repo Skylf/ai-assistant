@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  桌面组件的公共外观。
+
+  ## 为什么四个组件共用一份布局
+  四个组件的**结构完全一样**（图标 + 标题 + 一行汇总 + 一个「记一笔」按钮），
+  差别只有文案、主题色和点击后打开哪个表单。用四份几乎相同的 XML 会让
+  「改一次样式要改四个地方」成为必然的漏改来源；共用一份、用 setTextViewText
+  在 Kotlin 里填字，是这个差异度下更稳的做法。
+
+  ## 布局上的两条约束（都是 RemoteViews 的限制，不是偏好）
+  1. **只能用 RemoteViews 支持的控件**：LinearLayout / FrameLayout / TextView /
+     ImageView / Button 都行，但**不能有 EditText**。这是「AI 版组件不能在桌面上
+     直接打字」的根本原因 —— 所以 AI 记账/记药点开后弹的是 App 内的输入框。
+  2. **不能有自定义 drawable 效果**：圆角靠 background 的 shape drawable，
+     不能写渐变遮罩之类。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/widget_icon"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/ic_widget_app"
+            android:contentDescription="@string/widget_app_name" />
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="#1F2933"
+            android:text="@string/widget_expense_title" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_summary"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="6dp"
+        android:textSize="12sp"
+        android:maxLines="3"
+        android:ellipsize="end"
+        android:lineSpacingExtra="2dp"
+        android:textColor="#52606D"
+        android:text="@string/widget_summary_placeholder" />
+
+    <TextView
+        android:id="@+id/widget_action"
+        android:layout_width="match_parent"
+        android:layout_height="34dp"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/widget_action_bg"
+        android:text="@string/widget_action_expense" />
+</LinearLayout>

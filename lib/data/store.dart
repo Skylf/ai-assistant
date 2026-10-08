@@ -291,6 +291,33 @@ class Store extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 切到指定主题的对话；没有就建一个（0.5.2 为桌面 AI 组件加的）。
+  ///
+  /// ## 为什么需要它
+  ///
+  /// 桌面「AI 记账 / AI 记药」组件点开后，要让用户在**该主题**的对话里说话，
+  /// 否则会出现「在账本里说『布洛芬两盒』，模型给出 `med_add` 动作、
+  /// 却被主题过滤丢弃」——用户看到的是「记了但什么也没发生」。
+  /// 主题归属必须由**打开组件这件事本身**决定，不能交给模型猜。
+  ///
+  /// 复用第一个同主题对话而不是每次新建：用户从桌面说五句话，不该多出五个对话。
+  Future<Conversation> ensureConversationForTopic(Topic topic) async {
+    final existing = conversations
+        .where((c) => c.topic == topic)
+        .cast<Conversation?>()
+        .firstOrNull;
+    if (existing != null) {
+      if (_activeConversationId != existing.id) {
+        await selectConversation(existing.id);
+      }
+      return existing;
+    }
+    return createConversation(
+      title: topic == Topic.health ? '默认健康科普' : '默认账本分析',
+      topic: topic,
+    );
+  }
+
   Future<void> _loadMessages(String conversationId) async {
     final rows = await db.query(
       T.chats,

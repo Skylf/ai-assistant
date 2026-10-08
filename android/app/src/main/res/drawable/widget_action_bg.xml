@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「记一笔」按钮底色。
+
+  ⚠️ 颜色是**写死**的，没有引用 values/colors.xml —— RemoteViews 允许引用颜色
+  资源，但组件主题色有四种（记账/记药 × 普通/AI），而 shape drawable 不能带参数。
+  于是做法是：这里给一个中性底色，四种主题色在 Kotlin 里用
+  `setInt(root, "setBackgroundColor", ...)` 覆盖不了 shape 的圆角 ——
+  所以**真正的做法是四个组件各自 setTextColor，底色统一**。
+  统一底色在视觉上完全没问题，且省掉四份 drawable。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#1B7F79" />
+    <corners android:radius="10dp" />
+</shape>

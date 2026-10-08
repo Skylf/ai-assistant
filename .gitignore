@@ -37,7 +37,15 @@ migrate_working_dir/
 /doc/
 
 # 测试产物：失败对比图与预览出图
+#
+# ⚠️ 路径要写全。原先只有 `/test/failures/`，但 `flutter test` 实际把 golden
+# 失败时的对比图（masterImage / testImage / maskedDiff / isolatedDiff）写在
+# **`test/tools/failures/`**（跟着 `render_pages.dart` 的位置走）。
+# 于是那条规则**从来没生效过**，28 个纯二进制对比图被当成源码提交进了仓库 ——
+# 每次出图有像素差异都会产生一批垃圾 diff，review 时完全看不出真正的改动。
+# 现在两条都写，并把已误提交的那些从索引里移出去（文件留在磁盘上）。
 /test/failures/
+/test/tools/failures/
 /test/tools/preview/
 
 # Symbolication related

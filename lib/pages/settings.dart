@@ -11,8 +11,9 @@ import 'help.dart';
 import 'memory.dart';
 import 'password_tool.dart';
 import 'update.dart';
+import 'widget_settings.dart';
 
-/// 界面展示的版本号（**开发版代号**）。
+/// 界面展示的版本号。
 ///
 /// 版本号规则：**开发版用字母，正式版用数字。**
 ///
@@ -20,10 +21,10 @@ import 'update.dart';
 /// | --- | --- |
 /// | `0.4A` `0.4B` `0.4C` | 0.4 阶段的开发版，小更新依次用 A/B/C |
 /// | `0.4` | 0.4 阶段的正式版（正式发布才去掉字母） |
-/// | `0.5A` | 进入 0.5 阶段 |
+/// | `0.5.1` `0.5.2` | 0.5 阶段的发行版，小更新递增末位 |
 ///
-/// 与 `pubspec.yaml` 的关系：Android 的 versionName 不接受字母，所以那里写
-/// `0.4.0` 表示同一个版本，两者的 `<major>.<minor>` 必须一致（由
+/// 与 `pubspec.yaml` 的关系：Android 的 versionName 不接受字母，所以开发版时期
+/// 那里写 `0.4.0` 表示同一个版本，两者的 `<major>.<minor>` 必须一致（由
 /// `test/version_consistency_test.dart` 断言）。
 ///
 /// 「检查更新」用它和更新清单比对：[UpdateChecker.compareVersions] 明确支持
@@ -34,7 +35,11 @@ import 'update.dart';
 /// 加一，否则 Android 拒绝覆盖安装）、[Changelog.entries] 的第一条、
 /// 以及 `test/update_test.dart` 里的清单样例。`test/version_consistency_test.dart`
 /// 会拦截漏改。
-const appVersion = '0.5.1';
+///
+/// ⚠️ 「当前版本」那一行显示的是 `$appVersion 发行版`。**发行版不能再写「开发版」**
+/// —— 0.5.1 之后这个字串漏改过一次（版本号升到 `0.5.1` 了，标签还写着「开发版」），
+/// 界面上等于对用户说错话。`test/version_consistency_test.dart` 现在会拦它。
+const appVersion = '0.5.2';
 
 /// 设置页：多级信息架构（0.2B 评审要求）。
 ///
@@ -120,6 +125,14 @@ class SettingsPage extends StatelessWidget {
           title: '实用工具',
           children: [
             SettingsRow(
+              icon: Icons.widgets_outlined,
+              tint: Tone.tintTeal,
+              color: Tone.iconTeal,
+              title: '桌面组件',
+              subtitle: '在桌面直接记账、记药，共四种组件',
+              onTap: () => _push(context, WidgetSettingsPage(store: store)),
+            ),
+            SettingsRow(
               icon: Icons.password,
               tint: Tone.tintBlue,
               color: Tone.iconBlue,
@@ -157,7 +170,7 @@ class SettingsPage extends StatelessWidget {
               color: Tone.iconGreen,
               title: '当前版本',
               subtitle: '家庭生活助手',
-              trailingText: '$appVersion 开发版',
+              trailingText: '$appVersion 发行版',
             ),
           ],
         ),

@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  桌面浮层的「记药」表单。
+
+  字段与 App 内添加药品表单（lib/pages/med_form.dart）的**必填那一组**对应：
+  药品名称、规格、数量、单位、有效期、储存条件。
+  App 里还有一大段「详细信息」（用法用量/适应症/不良反应/禁忌/注意事项/备注），
+  那是给「事后完善资料」用的，来源以联网查询为主 —— 桌面上记一盒药时填这些
+  既不现实也没必要。它们仍可在 App 内补，不会丢。
+
+  ⚠️ 这个取舍写在这里是为了**留痕**：将来若有人问「为什么桌面上填不了禁忌」，
+  答案是「有意省略，不是漏了」。
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#99000000">
+
+    <View
+        android:id="@+id/quick_backdrop"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/quick_close" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@drawable/quick_sheet_bg"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:id="@+id/quick_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="14dp"
+            android:paddingBottom="20dp">
+
+            <View
+                android:layout_width="40dp"
+                android:layout_height="4dp"
+                android:layout_gravity="center_horizontal"
+                android:background="#D9DEE4" />
+
+            <TextView
+                android:id="@+id/quick_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#1F2933"
+                android:text="@string/quick_med_title" />
+
+            <TextView
+                android:id="@+id/quick_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="12sp"
+                android:textColor="#7B8794"
+                android:text="@string/quick_med_hint" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:textSize="12sp"
+                android:textColor="#52606D"
+                android:text="@string/quick_med_name" />
+
+            <EditText
+                android:id="@+id/quick_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/quick_field_bg"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:hint="@string/quick_med_name_hint"
+                android:textSize="16sp"
+                android:textColor="#1F2933"
+                android:textColorHint="#9AA5B1"
+                android:inputType="text"
+                android:maxLength="50"
+                android:maxLines="1"
+                android:importantForAutofill="no" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:textSize="12sp"
+                android:textColor="#52606D"
+                android:text="@string/quick_med_spec" />
+
+            <EditText
+                android:id="@+id/quick_spec"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/quick_field_bg"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:hint="@string/quick_med_spec_hint"
+                android:textSize="15sp"
+                android:textColor="#1F2933"
+                android:textColorHint="#9AA5B1"
+                android:inputType="text"
+                android:maxLength="50"
+                android:maxLines="1"
+                android:importantForAutofill="no" />
+
+            <!-- 数量 + 单位 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="12sp"
+                        android:textColor="#52606D"
+                        android:text="@string/quick_med_stock" />
+
+                    <EditText
+                        android:id="@+id/quick_stock"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:background="@drawable/quick_field_bg"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:paddingTop="10dp"
+                        android:paddingBottom="10dp"
+                        android:textSize="15sp"
+                        android:textColor="#1F2933"
+                        android:textColorHint="#9AA5B1"
+                        android:inputType="number"
+                        android:maxLines="1"
+                        android:importantForAutofill="no" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="12dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="12sp"
+                        android:textColor="#52606D"
+                        android:text="@string/quick_med_unit" />
+
+                    <!-- 单位胶囊由 Kotlin 填充（盒/瓶/板/袋/支/片） -->
+                    <LinearLayout
+                        android:id="@+id/quick_units"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:orientation="horizontal" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:textSize="12sp"
+                android:textColor="#52606D"
+                android:text="@string/quick_med_expiry" />
+
+            <EditText
+                android:id="@+id/quick_expiry"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/quick_field_bg"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:hint="@string/quick_med_expiry_hint"
+                android:textSize="15sp"
+                android:textColor="#1F2933"
+                android:textColorHint="#9AA5B1"
+                android:inputType="date"
+                android:maxLines="1"
+                android:importantForAutofill="no" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:textSize="12sp"
+                android:textColor="#52606D"
+                android:text="@string/quick_med_storage" />
+
+            <EditText
+                android:id="@+id/quick_storage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/quick_field_bg"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:hint="@string/quick_med_storage_hint"
+                android:textSize="15sp"
+                android:textColor="#1F2933"
+                android:textColorHint="#9AA5B1"
+                android:inputType="text"
+                android:maxLength="50"
+                android:maxLines="1"
+                android:importantForAutofill="no" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/quick_cancel"
+                    android:layout_width="0dp"
+                    android:layout_height="46dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:textSize="16sp"
+                    android:textColor="#52606D"
+                    android:background="@drawable/quick_chip_normal"
+                    android:text="@string/quick_cancel" />
+
+                <TextView
+                    android:id="@+id/quick_save"
+                    android:layout_width="0dp"
+                    android:layout_height="46dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="12dp"
+                    android:gravity="center"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:background="@drawable/widget_action_bg"
+                    android:text="@string/quick_save" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>

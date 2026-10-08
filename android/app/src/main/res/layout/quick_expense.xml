@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  桌面浮层的「记账」表单。
+
+  字段与 App 内的记账表单（lib/pages/expense_form.dart）**逐项对应**：
+  支出/收入、金额、分类、名称、日期、备注。
+  用户确认过「与 app 同样」，所以这里不裁剪字段 —— 少一个字段就意味着
+  「桌面上记的账」和「App 里记的账」不一样，事后还得回 App 补。
+
+  结构：半透明遮罩（点它关闭）+ 底部白卡片（只圆上面两角）。
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#99000000">
+
+    <!-- 点遮罩关闭。它铺满整屏，卡片盖在上面、自己消费点击。 -->
+    <View
+        android:id="@+id/quick_backdrop"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/quick_close" />
+
+    <LinearLayout
+        android:id="@+id/quick_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:background="@drawable/quick_sheet_bg"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="20dp">
+
+        <!-- 顶部把手：纯视觉，暗示可下滑关闭（实际点遮罩关闭） -->
+        <View
+            android:layout_width="40dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:background="#D9DEE4" />
+
+        <TextView
+            android:id="@+id/quick_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#1F2933"
+            android:text="@string/quick_expense_title" />
+
+        <TextView
+            android:id="@+id/quick_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="12sp"
+            android:textColor="#7B8794"
+            android:text="@string/quick_expense_hint" />
+
+        <!-- 支出 / 收入 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/quick_type_expense"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/quick_chip_selected"
+                android:text="@string/quick_expense_type_expense" />
+
+            <TextView
+                android:id="@+id/quick_type_income"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:layout_marginStart="10dp"
+                android:gravity="center"
+                android:textSize="15sp"
+                android:textColor="#52606D"
+                android:background="@drawable/quick_chip_normal"
+                android:text="@string/quick_expense_type_income" />
+        </LinearLayout>
+
+        <!-- 金额 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:textSize="12sp"
+            android:textColor="#52606D"
+            android:text="@string/quick_expense_amount" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/quick_field_bg"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="#52606D"
+                android:text="@string/quick_yuan" />
+
+            <EditText
+                android:id="@+id/quick_amount"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@null"
+                android:hint="@string/quick_amount_hint"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="#1F2933"
+                android:textColorHint="#9AA5B1"
+                android:inputType="numberDecimal"
+                android:maxLines="1"
+                android:importantForAutofill="no" />
+        </LinearLayout>
+
+        <!-- 分类 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:textSize="12sp"
+            android:textColor="#52606D"
+            android:text="@string/quick_expense_category" />
+
+        <!-- 分类胶囊由 Kotlin 动态填充：分类清单来自 App 的 Categories.all，
+             写死在 XML 里就会和 App 漂移（App 加了分类、桌面上选不到）。 -->
+        <LinearLayout
+            android:id="@+id/quick_categories"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="vertical" />
+
+        <!-- 名称 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:textSize="12sp"
+            android:textColor="#52606D"
+            android:text="@string/quick_expense_name" />
+
+        <EditText
+            android:id="@+id/quick_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/quick_field_bg"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:hint="@string/quick_expense_name_hint"
+            android:textSize="15sp"
+            android:textColor="#1F2933"
+            android:textColorHint="#9AA5B1"
+            android:inputType="text"
+            android:maxLength="50"
+            android:maxLines="1"
+            android:importantForAutofill="no" />
+
+        <!-- 日期 -->
+        <TextView
+            android:id="@+id/quick_date"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/quick_field_bg"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:textSize="15sp"
+            android:textColor="#1F2933"
+            android:drawableEnd="@android:drawable/ic_menu_my_calendar"
+            android:drawablePadding="8dp"
+            android:text="@string/quick_expense_date" />
+
+        <!-- 备注 -->
+        <EditText
+            android:id="@+id/quick_note"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/quick_field_bg"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:hint="@string/quick_expense_note_hint"
+            android:textSize="15sp"
+            android:textColor="#1F2933"
+            android:textColorHint="#9AA5B1"
+            android:inputType="text"
+            android:maxLength="100"
+            android:maxLines="2"
+            android:importantForAutofill="no" />
+
+        <!-- 取消 / 保存 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/quick_cancel"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:textSize="16sp"
+                android:textColor="#52606D"
+                android:background="@drawable/quick_chip_normal"
+                android:text="@string/quick_cancel" />
+
+            <TextView
+                android:id="@+id/quick_save"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_weight="1"
+                android:layout_marginStart="12dp"
+                android:gravity="center"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/widget_action_bg"
+                android:text="@string/quick_save" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

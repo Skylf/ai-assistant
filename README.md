@@ -1,16 +1,16 @@
 # 家庭生活助手
 
-0.5.1 发行版。基于 Flutter 的本地优先家庭账本、家庭药箱与密码生成器，预留 Android、iOS 和 macOS 平台。
+0.5.2 发行版。基于 Flutter 的本地优先家庭账本、家庭药箱与密码生成器，预留 Android、iOS 和 macOS 平台。
 
-> 版本号规则：**开发版用字母，正式版用数字**（`0.4A` → … → `0.4H` → `0.4I` → **`0.5.1`**，
-> 正式发布为 `0.4`，进入下一阶段为 `0.5A`）。每次更新要做三件事：
+> 版本号规则：**开发版用字母，正式版用数字**（`0.4A` → … → `0.4H` → `0.4I` → `0.5.1` → **`0.5.2`**）。
+> 每次更新要做三件事：
 > 递增 `lib/pages/settings.dart` 的 `appVersion`、同步 `pubspec.yaml` 的
 > `version:`（**并把 `+` 后面的 `versionCode` 加一**，否则 Android 拒绝覆盖安装）、
 > 在 `Changelog.entries` 最前面加一条。
 >
-> 本版是**发行版**，所以 pubspec 里写 `version: 0.5.1+14`，
-> 与 App 内的 `0.5.1` **完全相同**（发行版两处都是三段式数字，不再有开发代号）。
-> 系统「应用信息」与 App 内都显示 `0.5.1`。
+> 本版是**发行版**，所以 pubspec 里写 `version: 0.5.2+15`，
+> 与 App 内的 `0.5.2` **完全相同**（发行版两处都是三段式数字，不再有开发代号）。
+> 系统「应用信息」与 App 内都显示 `0.5.2`。
 > `test/version_consistency_test.dart` 会拦截漂移；历史上 versionCode 曾停在 2，
 > 导致后续包装不上。
 
@@ -123,9 +123,35 @@
 - 强度评估：按熵值给出 0-4 级强度、进度条与标签。
 - 本地记录：只保存用途、长度与强度，**绝不保存密码明文**（本机数据库是明文 SQLite，写明文等于把密码落到普通文件里）。
 
+### 桌面组件（0.5.2 新增，仅 Android）
+
+四种桌面组件，可同时放多个，在「设置 → 桌面组件」里一键添加（调系统 `requestPinAppWidget`，
+Android 8.0+；桌面不支持时页面会说明手动添加路径）。
+
+| 组件 | 点开之后 | 为什么这样设计 |
+| --- | --- | --- |
+| **记账** | 桌面上弹出原生浮层，就地填支出/收入、金额、分类、名称、日期、备注 | 不等 App 冷启动，点开即可输入；字段与 App 内表单一致 |
+| **AI 记账** | 打开 App 进入账本模块的空白对话，说一句话由 AI 解析 | 见下方说明 |
+| **记药** | 桌面上弹出原生浮层，就地填药名、规格、数量、有效期、储存条件 | 同上 |
+| **AI 记药** | 打开 App 进入健康模块的空白对话，说一句话由 AI 解析 | 同上 |
+
+- **为什么 AI 版要进 App**：桌面组件用 `RemoteViews` 渲染，而 **`RemoteViews` 不支持 `EditText`**
+  —— 组件里放不了输入框。这是系统限制，没有第二种做法。所以 AI 版把用户送进 App 的
+  `ActionPlan` 链路（模型理解人话 → 结构化动作），而不是在组件上硬塞输入。
+  用户点的是「AI 记账」还是「AI 记药」，**决定了进哪个模块**，不交给模型或关键词推断。
+- **组件上的汇总**：记账组件显示「今日支出 ¥x 共 n 笔」，记药组件显示「药箱 n 种 需关注 m 种」
+  （需关注 = 过期 / 30 天内到期 / 无库存）。
+- **数据怎么回到 App**：原生把记录**追加**写进 `filesDir/widget_pending.jsonl`
+  （JSON Lines：一行一条，写到一半被杀只损坏最后一行），App 启动与回到前台时读取并入库，
+  **入库成功后才删行**，按记录 `id` 去重，所以断电重放也不会记成两条。
+  Android 的 `context.filesDir` 就是 Flutter 的 `getApplicationDocumentsDirectory()`，
+  因此**两端共享文件、零新增依赖**（没用 `home_widget`，避免插件注册与版本兼容风险）。
+- 组件本身**不联网**；汇总数字来自 App 上次算好的数据。
+
 ### 设置
 
 - 多级信息架构：账户与 AI / 数据与隐私 / 实用工具 / 关于。
+- 桌面组件：四种组件的一键添加、每种点开后的行为说明、添加到桌面失败时的手动路径。
 - AI 服务：Base URL、模型名（点「获取可用模型」拉取服务商**真实**列表后点选，也可手工填写）、API Key（默认隐藏）、测试连接。
   模型名以服务商返回的列表为准，代码里**不写死任何模型名对照表**，也不会静默改写你选的名字。
 - 反向录入：在对话里说「添加药品 a,b,c」「记账 买菜 32.5, 打车 18」即可批量落库。理解方式三档可选：
@@ -179,7 +205,7 @@ flutter build apk --release --dart-define=UPDATE_MANIFEST_URL=https://example.co
 
 ```powershell
 flutter analyze                      # 静态分析（必须零问题）
-flutter test                         # 单元测试 + Widget 测试（297 项，19 个文件）
+flutter test                         # 单元测试 + Widget 测试（666 项，31 个文件）
 flutter test test/tools/render_pages.dart --tags preview   # 窄屏预览 + 无溢出 + 出图稳定
 flutter build apk --debug            # 构建校验
 flutter build apk --release          # 发布构建
@@ -190,7 +216,7 @@ flutter build apk --release          # 发布构建
 ```powershell
 & "$env:LOCALAPPDATA\Android\Sdk\build-tools\37.0.0\aapt2.exe" dump badging `
   build\app\outputs\flutter-apk\app-release.apk | Select-String "package:"
-# 期望：versionCode='4' versionName='0.4.0'
+# 期望：versionCode='15' versionName='0.5.2'
 ```
 
 窄屏布局检查 / 出图预览（360×800 渲染主要页面，PNG 输出到 `test/tools/preview/`；
@@ -216,6 +242,10 @@ lib/
     db.dart              LocalDb 接口 + SqfliteDb 实现（schema v6：表结构与迁移集中在此）
     models.dart          Conversation / SavedPassword / ChatMessage
     store.dart           全局状态与业务逻辑（ChangeNotifier）
+    widget_bridge.dart   桌面组件交接层：队列文件解析/规整/汇总（0.5.2）
+    widget_sync.dart     把桌面记的内容写入数据库并回写汇总（0.5.2）
+    widget_launch.dart   「AI 组件把我叫起来」的原生通道（0.5.2）
+    widget_inbox.dart    组件启动请求的全局待办，统一冷启动与热启动（0.5.2）
   ai/
     client.dart          兼容 OpenAI Chat Completions 的客户端与错误翻译
                          （0.4D：complete(webSearch:) 可选带服务端 web_search 工具，
@@ -249,6 +279,7 @@ lib/
     expense_form.dart    记账 / 改账表单（编辑沿用原 id）
     meds.dart            药箱（两级：药品 / 统计）
     med_form.dart        添加 / 修改药品表单（三组分区 + 分类手选）
+    widget_settings.dart 桌面组件设置：一键添加 + 手动添加说明（0.5.2）
     med_detail.dart      药品详情（状态 / 基本信息 / 用法与药效 / 安全信息 /
                          资料出处 + 让 AI 补充 / 去药监局查询 / 询问 AI 三个入口）
     ai_hub.dart          AI 模块入口页（账本分析 / 健康科普两个按钮）
