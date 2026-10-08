@@ -139,68 +139,129 @@ class SqfliteDb implements LocalDb {
     return db;
   }
 
+  /// 全新安装要执行的建表语句（**唯一事实来源**）。
+  ///
+  /// 提成这个方法而不是写在 `_create` 里，是为了让
+  /// `test/schema_consistency_test.dart` 能**拿到生产实际执行的那几条 SQL**
+  /// 去解析列名。如果测试自己抄一份 DDL，它就只能证明「我抄的这份没问题」——
+  /// 而真正要防的恰恰是**生产代码漏列**。
+  @visibleForTesting
+  static List<String> createTableSql() => [
+    'CREATE TABLE ${T.expenses}('
+        'id TEXT PRIMARY KEY,'
+        'title TEXT,'
+        'category TEXT,'
+        'amount REAL,'
+        'spentAt TEXT,'
+        'note TEXT,'
+        "entryType TEXT DEFAULT 'expense')",
+    'CREATE TABLE ${T.meds}('
+        'id TEXT PRIMARY KEY,'
+        'name TEXT,'
+        'ingredient TEXT,'
+        'spec TEXT,'
+        'stock INTEGER,'
+        'expiry TEXT,'
+        'storage TEXT,'
+        'note TEXT,'
+        // ---- v6（0.4D）：分类与详细信息 ----
+        'form TEXT,'
+        'usage TEXT,'
+        'indications TEXT,'
+        'efficacy TEXT,'
+        'adverse TEXT,'
+        'contraindications TEXT,'
+        'precautions TEXT,'
+        'infoSource TEXT,'
+        // ---- v7（0.4F）：联网来源 URL，换行分隔 ----
+        'infoUrls TEXT,'
+        'infoCheckedAt TEXT)',
+    'CREATE TABLE ${T.chats}('
+        'id TEXT PRIMARY KEY,'
+        'role TEXT,'
+        'content TEXT,'
+        'topic TEXT,'
+        // v4：消息归属的对话。v3 漏了它，是那次白屏的直接原因。
+        'conversationId TEXT,'
+        'createdAt TEXT)',
+    'CREATE TABLE ${T.conversations}('
+        'id TEXT PRIMARY KEY,'
+        'title TEXT,'
+        'topic TEXT,'
+        'memory TEXT DEFAULT \'local\','
+        'createdAt TEXT,'
+        'updatedAt TEXT,'
+        // v5：对话置顶。**这一列曾经漏在这里**，导致清除应用数据后的用户
+        // 一写对话就崩（`table conversations has no column named pinnedAt`）。
+        // 详见 `_create` 的注释；`test/schema_consistency_test.dart` 守着它。
+        'pinnedAt TEXT)',
+    'CREATE TABLE ${T.passwords}('
+        'id TEXT PRIMARY KEY,'
+        'label TEXT,'
+        'site TEXT,'
+        'length INTEGER,'
+        'strength INTEGER,'
+        'entropy REAL,'
+        'createdAt TEXT)',
+  ];
+
+  /// 全新安装时建表。
+  ///
+  /// ⚠️ **建完之后必须再跑一遍迁移**（[migrationStatements]），这不是多余的动作。
+  ///
+  /// 原因：`onCreate` 只在**全新安装**时执行，`onUpgrade` 只在**版本号变大**时执行，
+  /// 两条路互不相干。于是「基础表结构」和「历次迁移新增的列」必须由人手工保持
+  /// **逐列一致** —— 漏一列，全新安装的用户就少一列，而**开发机上几乎不可能发现**：
+  /// 我们自己的库是升级上来的，那一列早就通过迁移补过了。
+  ///
+  /// 这个 bug 真实发生过：`conversations.pinnedAt`（v5 加的对话置顶）从未补进
+  /// 下面这段基础 DDL，于是**只有清除应用数据 / 全新安装的用户**会崩：
+  ///
+  /// ```
+  /// DatabaseException(table conversations has no column named pinnedAt)
+  /// ```
+  ///
+  /// 而升级上来的用户（包括我自己）一切正常 —— 典型的「开发者永远踩不到」的坑。
+  ///
+  /// 现在改成 `CREATE` + `migrate` 两步，两条路**必然收敛到同一套结构**；
+  /// 而且 `migrationStatements` 是幂等的（先查表、查列再动手），重复跑安全。
+  ///
+  /// 更根本的保障是 `test/schema_consistency_test.dart`：它把 `_create` 建出来的
+  /// 列集合和「从最老版本一路迁移上去」的列集合**做相等断言**，以后谁再漏列都会红。
   Future<void> _create(Database db, int version) async {
-    await db.execute(
-      'CREATE TABLE ${T.expenses}('
-      'id TEXT PRIMARY KEY,'
-      'title TEXT,'
-      'category TEXT,'
-      'amount REAL,'
-      'spentAt TEXT,'
-      'note TEXT,'
-      "entryType TEXT DEFAULT 'expense')",
-    );
-    await db.execute(
-      'CREATE TABLE ${T.meds}('
-      'id TEXT PRIMARY KEY,'
-      'name TEXT,'
-      'ingredient TEXT,'
-      'spec TEXT,'
-      'stock INTEGER,'
-      'expiry TEXT,'
-      'storage TEXT,'
-      'note TEXT,'
-      // ---- v6（0.4D）：分类与详细信息 ----
-      'form TEXT,'
-      'usage TEXT,'
-      'indications TEXT,'
-      'efficacy TEXT,'
-      'adverse TEXT,'
-      'contraindications TEXT,'
-      'precautions TEXT,'
-      'infoSource TEXT,'
-      // ---- v7（0.4F）：联网来源 URL，换行分隔 ----
-      'infoUrls TEXT,'
-      'infoCheckedAt TEXT)',
-    );
-    await db.execute(
-      'CREATE TABLE ${T.chats}('
-      'id TEXT PRIMARY KEY,'
-      'role TEXT,'
-      'content TEXT,'
-      'topic TEXT,'
-      'conversationId TEXT,'
-      'createdAt TEXT)',
-    );
-    await db.execute(
-      'CREATE TABLE ${T.conversations}('
-      'id TEXT PRIMARY KEY,'
-      'title TEXT,'
-      'topic TEXT,'
-      'memory TEXT DEFAULT \'local\','
-      'createdAt TEXT,'
-      'updatedAt TEXT)',
-    );
-    await db.execute(
-      'CREATE TABLE ${T.passwords}('
-      'id TEXT PRIMARY KEY,'
-      'label TEXT,'
-      'site TEXT,'
-      'length INTEGER,'
-      'strength INTEGER,'
-      'entropy REAL,'
-      'createdAt TEXT)',
-    );
+    for (final sql in createTableSql()) {
+      await db.execute(sql);
+    }
+
+    // ★ 关键一步：全新安装也走一遍迁移。
+    //
+    // 这样「新建的库」和「升级上来的库」拿到的结构**必然一致**，
+    // 不再依赖人记住「加了列要同时改两处」——那个约定已经失效过一次，
+    // 代价是用户清除数据后 App 直接起不来。
+    await _runMigrations(db);
+  }
+
+  /// 按当前实际结构算出并执行幂等的迁移语句。
+  ///
+  /// 抽出来是为了让 [SqfliteDb._create] 与 [SqfliteDb._upgrade] **共用同一段逻辑**
+  /// —— 两条路各写一遍正是「漏列」这类 bug 的温床。
+  ///
+  /// [migrationStatements] 会先查表、查列再决定做什么，所以对刚建好的新库
+  /// 它基本不产出语句（只补基础 DDL 里没写的新列）；对老库则补齐缺的列。
+  Future<void> _runMigrations(Database db) async {
+    final columns = <String, Set<String>>{};
+    final tables = <String>{};
+    for (final table in localDbOrder.keys) {
+      if (await _hasTable(db, table)) {
+        tables.add(table);
+        columns[table] = await _columnNames(db, table);
+      }
+    }
+    for (final sql in migrationStatements(tables: tables, columns: columns)) {
+      await db.execute(sql);
+    }
+    // 老消息没有归属对话，交给 Store.ensureConversations() 按主题认领：
+    // 它会把 conversationId 为空的行挂到对应的「默认对话」上。
   }
 
   /// 迁移：老版本升级时补齐新表与新列，并保留既有数据。
@@ -215,19 +276,7 @@ class SqfliteDb implements LocalDb {
   /// （修白屏的那段迁移）**一次都没有被执行或校验过**。现在 SQL 是纯函数的输出，
   /// `test/migration_sql_test.dart` 可以在不碰数据库的情况下校验它。
   Future<void> _upgrade(Database db, int oldVersion, int newVersion) async {
-    final columns = <String, Set<String>>{};
-    final tables = <String>{};
-    for (final table in localDbOrder.keys) {
-      if (await _hasTable(db, table)) {
-        tables.add(table);
-        columns[table] = await _columnNames(db, table);
-      }
-    }
-    for (final sql in migrationStatements(tables: tables, columns: columns)) {
-      await db.execute(sql);
-    }
-    // 老消息没有归属对话，交给 Store.ensureConversations() 按主题认领：
-    // 它会把 conversationId 为空的行挂到对应的「默认对话」上。
+    await _runMigrations(db);
   }
 
   static const _conversationsDdl =

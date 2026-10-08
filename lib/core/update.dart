@@ -225,6 +225,25 @@ class Changelog {
 
   static const entries = <ChangelogEntry>[
     ChangelogEntry(
+      version: '0.4I',
+      title: '修复：清除应用数据后 App 起不来（全新安装缺一列）',
+      highlights: [
+        '**你报的那个崩溃修好了**。在系统设置里「清除数据」之后打开 App 直接停在'
+            '「应用启动失败」，错误是 `table conversations has no column named pinnedAt`',
+        '**根因**：`conversations` 表的「置顶」那一列（`pinnedAt`）是**升级时补的**，'
+            '而**全新安装的建表语句里从来没补过它**。全新安装走 `onCreate`、'
+            '升级走 `onUpgrade`，两条路互不相干 —— 于是**升级上来的用户正常，'
+            '新装或清过数据的用户一写对话就崩**。这是典型的「开发者自己永远踩不到」的坑：'
+            '我自己的库是一路升级上来的，所以一切正常',
+        '**修法两层**：① 基础建表补齐这一列；② 全新安装也**再跑一遍迁移**，'
+            '让两条路必然收敛到同一套结构 —— 以后新增列不会再出现这种偏差',
+        '**为什么 480 项测试没抓住它**：那些测试都是**纯 SQL 字符串断言**，'
+            '没有一项比较过「全新安装」和「升级安装」产出的列集合是否相等。'
+            '现在新增 `test/schema_consistency_test.dart` 专门做这个比较，'
+            '并且把「基础建表必须包含所有迁移补的列」变成断言',
+      ],
+    ),
+    ChangelogEntry(
       version: '0.4H',
       title: '模型收敛到 Flash：默认改 deepseek-flash，Pro 不再出现在可选项里',
       highlights: [
