@@ -394,6 +394,36 @@ class Store extends ChangeNotifier {
     return next;
   }
 
+  /// 尚未处于 [MemoryScope.global] 档位的对话条数。
+  ///
+  /// 给「一键全部改成全局记忆」做影响面预览用 —— 确认框里必须出现**真实数字**，
+  /// 否则用户点下去不知道会动几条。
+  int countConversationsNotGlobal() =>
+      conversations.where((c) => c.memory != MemoryScope.global).length;
+
+  /// 把所有对话的记忆档位批量改成 [scope]，返回实际改动的条数。
+  ///
+  /// 为什么需要它：`createConversation` 的默认值只作用于**新建**那一刻，
+  /// 升级前就存在的对话保留自己 `memory` 列存的值（刻意的，见
+  /// `MemoryScope.defaultScope` 的注释）。于是用户升级到 0.5.3 之后
+  /// 会发现「新建的是全局记忆、老的还是仅本对话」，而且**只能一条条点胶囊改**。
+  /// 这个批量操作就是补上那个缺口。
+  ///
+  /// 刻意**不做成升级时自动迁移**：那会在用户不知情的情况下把「仅当前对话」
+  /// 和「不记忆」的对话一并改成全局 —— 对「不记忆」的对话尤其严重，
+  /// 它本来是「完全不向模型发送历史」，被改成全局之后**历史会开始被发出去**。
+  /// 所以必须是用户显式点击的主动作。
+  ///
+  /// 只改档位不同的那几条，已经是目标档位的跳过：省掉无谓的写库，
+  /// 也避免把 `updatedAt` 白改一遍（它参与「最近」排序）。
+  Future<int> setAllConversationMemory(MemoryScope scope) async {
+    final targets = conversations.where((c) => c.memory != scope).toList();
+    for (final conversation in targets) {
+      await updateConversation(conversation.id, memory: scope);
+    }
+    return targets.length;
+  }
+
   /// 删除对话及其全部消息。删除最后一个对话时会自动补一个空对话。
   Future<void> deleteConversation(String id) async {
     await db.remove(T.conversations, id);

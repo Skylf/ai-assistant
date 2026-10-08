@@ -1,16 +1,16 @@
 # 家庭生活助手
 
-0.5.3 发行版。基于 Flutter 的本地优先家庭账本、家庭药箱与密码生成器，预留 Android、iOS 和 macOS 平台。
+0.5.4 发行版。基于 Flutter 的本地优先家庭账本、家庭药箱与密码生成器，预留 Android、iOS 和 macOS 平台。
 
-> 版本号规则：**开发版用字母，正式版用数字**（`0.4A` → … → `0.4H` → `0.4I` → `0.5.1` → `0.5.2` → **`0.5.3`**）。
+> 版本号规则：**开发版用字母，正式版用数字**（`0.4A` → … → `0.4H` → `0.4I` → `0.5.1` → `0.5.2` → `0.5.3` → **`0.5.4`**）。
 > 每次更新要做三件事：
 > 递增 `lib/pages/settings.dart` 的 `appVersion`、同步 `pubspec.yaml` 的
 > `version:`（**并把 `+` 后面的 `versionCode` 加一**，否则 Android 拒绝覆盖安装）、
 > 在 `Changelog.entries` 最前面加一条。
 >
-> 本版是**发行版**，所以 pubspec 里写 `version: 0.5.3+16`，
-> 与 App 内的 `0.5.3` **完全相同**（发行版两处都是三段式数字，不再有开发代号）。
-> 系统「应用信息」与 App 内都显示 `0.5.3`。
+> 本版是**发行版**，所以 pubspec 里写 `version: 0.5.4+17`，
+> 与 App 内的 `0.5.4` **完全相同**（发行版两处都是三段式数字，不再有开发代号）。
+> 系统「应用信息」与 App 内都显示 `0.5.4`。
 > `test/version_consistency_test.dart` 会拦截漂移；历史上 versionCode 曾停在 2，
 > 导致后续包装不上。
 
@@ -112,6 +112,8 @@
   **新建对话默认是「存入全局记忆」**（0.5.3 起，原为「仅当前对话」）；
   已存在的对话保留自己设过的档位，升级不会改写。
   默认值只有一处定义：`MemoryScope.defaultScope`。
+  升级前就存在的老对话保留自己原来的档位（不覆盖用户设过的选择），
+  可用「设置 → 全局记忆 → 把全部对话改成『全局记忆』」一次改完。
 - 图表输出：模型按约定格式返回数据，客户端渲染成真实的分类对比图与趋势图。
 - 反向操作：说「添加药品 布洛芬 库存 5 有效期 2027-01-02」直接入药箱；记账语句直接入账本。
 - **不会自动切换模块**：在账本分析里问药品问题也留在账本分析，想聊健康请回入口页进健康科普。
@@ -219,7 +221,7 @@ flutter build apk --release          # 发布构建
 ```powershell
 & "$env:LOCALAPPDATA\Android\Sdk\build-tools\37.0.0\aapt2.exe" dump badging `
   build\app\outputs\flutter-apk\app-release.apk | Select-String "package:"
-# 期望：versionCode='16' versionName='0.5.3'
+# 期望：versionCode='17' versionName='0.5.4'
 ```
 
 窄屏布局检查 / 出图预览（360×800 渲染主要页面，PNG 输出到 `test/tools/preview/`；

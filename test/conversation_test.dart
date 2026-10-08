@@ -227,6 +227,48 @@ void main() {
       expect(store.activeConversation!.memory, MemoryScope.off);
     });
 
+    test('【关键】升级前就存在的对话保留自己的档位，不会被默认值改写', () async {
+      // 真实现场：用户升级到 0.5.3 后发问「为啥我在聊天里看到的还是仅本对话记忆」。
+      //
+      // 根因是**这不是 bug**，而是刻意的：默认值只作用于 `createConversation`
+      // 那一刻，库里已有的行保留自己 `memory` 列存的值。
+      //
+      // 这条测试用**同一个 FakeDb 开两次 Store** 来复现「升级前后」：
+      // 第一次是升级前（把默认值显式写成 local，模拟旧版本建出来的对话），
+      // 第二次是升级后重新 load —— 断言它**仍然是 local**。
+      // 如果哪天有人把「默认值」改成「迁移时覆盖所有旧对话」，
+      // 这条会红，提醒他那是数据破坏而不是功能改进。
+      final db = FakeDb();
+
+      final before = await openStore(db);
+      await before.updateConversation(
+        before.activeConversationId,
+        memory: MemoryScope.local,
+      );
+      await before.addMessage('user', '升级前就在的老对话');
+      final id = before.activeConversationId;
+      expect(before.activeConversation!.memory, MemoryScope.local);
+
+      // 同一个库，重新启动（等价于升级后第一次打开）
+      final after = await openStore(db);
+      expect(after.conversations.length, 1);
+      expect(after.conversations.single.id, id);
+      expect(
+        after.conversations.single.memory,
+        MemoryScope.local,
+        reason: '已有对话的记忆档位必须原样保留 —— 用户自己设过的选择不该被升级抹掉',
+      );
+      // 而**新建**的对话走新默认值，两者并存不矛盾
+      final fresh = await after.createConversation(title: '升级后新建的');
+      expect(fresh.memory, MemoryScope.global);
+      expect(after.conversations.length, 2);
+      // 老的那条依然没被动过
+      expect(
+        after.conversations.firstWhere((c) => c.id == id).memory,
+        MemoryScope.local,
+      );
+    });
+
     test('三档记忆都有展示文案，不会出现空标签', () {
       for (final scope in MemoryScope.values) {
         expect(scope.label, isNotEmpty);
@@ -235,6 +277,52 @@ void main() {
         expect(scope.code, isNotEmpty);
         expect(scope.icon, isNotNull);
       }
+    });
+
+    test('一键把全部对话改成「全局记忆」：只改需要改的，并报告真实条数', () async {
+      final store = await openStore();
+      // 初始那条是新建的（global），再手工造出 local / off 各一条
+      await store.updateConversation(
+        store.activeConversationId,
+        memory: MemoryScope.local,
+      );
+      final off = await store.createConversation(
+        title: '不记忆的',
+        memory: MemoryScope.off,
+      );
+      expect(off.memory, MemoryScope.off);
+
+      // 两条是 local/off，都不是 global
+      expect(store.countConversationsNotGlobal(), 2);
+
+      final changed = await store.setAllConversationMemory(MemoryScope.global);
+      expect(changed, 2);
+      for (final c in store.conversations) {
+        expect(c.memory, MemoryScope.global);
+      }
+      expect(store.countConversationsNotGlobal(), 0);
+
+      // 幂等：没有需要改的时候返回 0，不报错
+      expect(await store.setAllConversationMemory(MemoryScope.global), 0);
+    });
+
+    test('一键改档位不会白改已经是目标档位的对话', () async {
+      // `setAllConversationMemory` 只动档位不同的那几条。如果它无差别地全部
+      // 写一遍，`updatedAt` 会被刷新，而 `updatedAt` 参与「最近」排序 ——
+      // 用户会看到对话顺序无缘无故变了。
+      final store = await openStore();
+      final global = store.conversations.single;
+      expect(global.memory, MemoryScope.global);
+      final before = global.updatedAt;
+
+      final changed = await store.setAllConversationMemory(MemoryScope.global);
+
+      expect(changed, 0);
+      expect(
+        store.conversations.single.updatedAt,
+        before,
+        reason: '已经是「全局记忆」的对话不该被重写，否则排序会跟着变',
+      );
     });
 
     test('全局记忆可以保存与读回', () async {

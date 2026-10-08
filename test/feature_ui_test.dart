@@ -537,6 +537,60 @@ void main() {
       expect(store.dataCounts['expenses'], 1);
     });
 
+    testWidgets('全局记忆页可以把全部老对话一键改成「全局记忆」', (tester) async {
+      // 真实现场：用户升级到 0.5.3 后问「为啥我在聊天里看到的还是仅本对话记忆」。
+      // 原因是老对话保留自己存的档位（刻意），但没有批量入口就只能一条条点胶囊。
+      final store = await openStore();
+      // 造一个「老对话」：把当前这条改成 local，它就不是 global 了
+      await store.updateConversation(
+        store.activeConversationId,
+        memory: MemoryScope.local,
+      );
+      expect(store.countConversationsNotGlobal(), 1);
+
+      await pumpApp(tester, store);
+      await openTab(tester, '设置');
+      await tapSetting(tester, '全局记忆');
+
+      // 副标题里要出现真实条数，用户才知道会动几条
+      await scrollTo(tester, find.textContaining('还有 1 个对话'));
+      expect(find.textContaining('还有 1 个对话'), findsOneWidget);
+
+      await tester.tap(find.text('把全部对话改成「全局记忆」'));
+      await tester.pumpAndSettle();
+
+      // 先弹确认框，不能点一下就改
+      expect(find.text('把全部对话改成「全局记忆」？'), findsOneWidget);
+      expect(store.conversations.single.memory, MemoryScope.local,
+          reason: '还没确认就不该改动任何对话');
+
+      await tester.tap(find.widgetWithText(FilledButton, '全部改成全局'));
+      await tester.pumpAndSettle();
+
+      expect(store.conversations.single.memory, MemoryScope.global);
+      expect(store.countConversationsNotGlobal(), 0);
+      // 改完副标题应变成「无需改动」，按钮不可再点
+      await scrollTo(tester, find.textContaining('无需改动'));
+      expect(find.textContaining('无需改动'), findsOneWidget);
+    });
+
+    testWidgets('「不记忆」的对话被批量改档位时，确认框要警告历史会被发送', (tester) async {
+      // 「不记忆」原本完全不向模型发送历史，改成全局之后历史会开始被发出去 ——
+      // 这是本操作里唯一有隐私影响的一类，必须在点之前就写清楚。
+      final store = await openStore();
+      await store.createConversation(title: '私密', memory: MemoryScope.off);
+
+      await pumpApp(tester, store);
+      await openTab(tester, '设置');
+      await tapSetting(tester, '全局记忆');
+      await scrollTo(tester, find.text('把全部对话改成「全局记忆」'));
+      await tester.tap(find.text('把全部对话改成「全局记忆」'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('不记忆'), findsOneWidget);
+      expect(find.textContaining('历史会开始随提问发送给模型'), findsOneWidget);
+    });
+
     testWidgets('使用说明二级页包含安全提示', (tester) async {
       final store = await openStore();
       await pumpApp(tester, store);

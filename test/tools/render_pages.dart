@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:family_life_assistant/data/store.dart';
 import 'package:family_life_assistant/main.dart';
 import 'package:family_life_assistant/pages/api_config.dart';
+import 'package:family_life_assistant/pages/memory.dart';
 import 'package:family_life_assistant/pages/password_tool.dart';
 import 'package:family_life_assistant/pages/settings.dart';
 import 'package:family_life_assistant/pages/widget_settings.dart';
@@ -438,6 +439,23 @@ void main() {
     debugPrint(
       '组件设置页「添加到桌面」按钮数：'
       '${find.text('添加到桌面').evaluate().length}（应为 4）',
+    );
+
+    // 0.5.3：全局记忆页单独出图。新增了「把全部对话改成全局记忆」这一个入口，
+    // 它正是「用户升级后老对话还显示仅本对话」那个困惑的解法 ——
+    // 出图确认这一行真的渲染出来了（而不是只存在于代码里）。
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(),
+        home: GlobalMemoryPage(store: store),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await shoot('14-global-memory');
+    dumpText('14-global-memory');
+    debugPrint(
+      '全局记忆页「把全部对话改成全局记忆」入口数：'
+      '${find.text('把全部对话改成「全局记忆」').evaluate().length}（应为 1）',
     );
 
     // 记录实际渲染出来的版本号，串版本时一眼能看出来

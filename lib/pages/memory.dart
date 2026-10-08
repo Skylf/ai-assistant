@@ -22,6 +22,9 @@ class _GlobalMemoryPageState extends State<GlobalMemoryPage> {
   late final TextEditingController _controller;
   bool _saved = true;
 
+  /// 正在批量改档位时为 true，用于禁用按钮防连点。
+  bool _migrating = false;
+
   static const _examples = [
     '家里有 2 位老人和 1 个 6 岁孩子',
     '记账时「餐饮」包含外卖和饮料',
@@ -60,6 +63,42 @@ class _GlobalMemoryPageState extends State<GlobalMemoryPage> {
     if (!ok) return;
     _controller.clear();
     await _save();
+  }
+
+  /// 把所有旧对话的记忆档位一键改成「全局记忆」。
+  ///
+  /// 确认框里给出**真实条数**，并单独提醒「不记忆」的对话会被一起改掉 ——
+  /// 那种对话原本完全不发送历史，改成全局之后历史会开始被发出去，
+  /// 是本操作里唯一有隐私影响的一类，必须让用户在点之前就看到。
+  Future<void> _makeAllGlobal() async {
+    final pending = store.countConversationsNotGlobal();
+    if (pending == 0) {
+      toast(context, '所有对话都已经是「全局记忆」了');
+      return;
+    }
+    final offCount = store.conversations
+        .where((c) => c.memory == MemoryScope.off)
+        .length;
+    // 拼成一整段再交给 confirmDialog：多行插值 + 内嵌引号写在一个字面量里
+    // 极易数错引号，拆出来读起来也清楚。
+    final privacyNote = offCount > 0
+        ? '\n\n其中 $offCount 个原本是「不记忆」（完全不发送历史），'
+              '改掉之后这些对话的历史会开始随提问发送给模型。'
+        : '';
+    final ok = await confirmDialog(
+      context,
+      title: '把全部对话改成「全局记忆」？',
+      content:
+          '会把 $pending 个对话的记忆档位改成「全局记忆」，'
+          '它们的内容之后可以被其他对话引用。$privacyNote',
+      confirmLabel: '全部改成全局',
+    );
+    if (!ok) return;
+    setState(() => _migrating = true);
+    final changed = await store.setAllConversationMemory(MemoryScope.global);
+    if (!mounted) return;
+    setState(() => _migrating = false);
+    toast(context, '已把 $changed 个对话改成「全局记忆」');
   }
 
   @override
@@ -143,6 +182,35 @@ class _GlobalMemoryPageState extends State<GlobalMemoryPage> {
             subtitle: '例如：尽量简短，先说结论',
           ),
         ],
+      ),
+      // 0.5.3：新建对话已默认「全局记忆」，但升级前的老对话保留自己原来的档位。
+      // 没有这个按钮的话，用户只能一条条点胶囊去改 —— 这里给一个一次改完的入口。
+      Builder(
+        builder: (context) {
+          final pending = store.countConversationsNotGlobal();
+          return SettingsGroup(
+            title: '老对话的记忆档位',
+            children: [
+              SettingsRow(
+                icon: Icons.public,
+                tint: Tone.tintTeal,
+                color: Tone.iconTeal,
+                title: '把全部对话改成「全局记忆」',
+                subtitle: pending == 0
+                    ? '所有对话都已经是「全局记忆」，无需改动'
+                    : '还有 $pending 个对话是其他档位，一键改完即可跨对话共享上下文',
+                trailing: _migrating
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : null,
+                onTap: _migrating || pending == 0 ? null : _makeAllGlobal,
+              ),
+            ],
+          );
+        },
       ),
       Padding(
         padding: const EdgeInsets.fromLTRB(Gap.page, Gap.x4, Gap.page, 0),
